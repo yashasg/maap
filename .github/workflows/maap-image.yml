@@ -15,11 +15,13 @@ concurrency:
 
 jobs:
   image:
+    if: github.actor == github.repository_owner && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
       packages: write
+      id-token: write
     env:
       COMPOSE_FILE: ${{ github.workspace }}/deploy/maap/docker-compose.yml
       COMPOSE_PROJECT_NAME: maap-ci
@@ -59,7 +61,7 @@ jobs:
           bash deploy/maap/backup.sh
           bash deploy/maap/restore-drill.sh "$BACKUP_DIR"/maap-*.dump
       - name: Publish tested image to GHCR
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor == github.repository_owner
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -67,3 +69,40 @@ jobs:
           docker push "$UMAMI_IMAGE:$GITHUB_SHA"
           docker tag "$UMAMI_IMAGE:$GITHUB_SHA" "$UMAMI_IMAGE:latest"
           docker push "$UMAMI_IMAGE:latest"
+      - name: Deploy published image to GCP e2-micro over IAP
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor == github.repository_owner
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_ZONE: ${{ secrets.GCP_ZONE }}
+          GCP_INSTANCE: ${{ secrets.GCP_INSTANCE }}
+          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        run: |
+          audience="https://iam.googleapis.com/${GCP_WORKLOAD_IDENTITY_PROVIDER}"
+          curl -fsSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${audience}" | jq -r .value > "$RUNNER_TEMP/oidc.jwt"
+          gcloud iam workload-identity-pools create-cred-config "$GCP_WORKLOAD_IDENTITY_PROVIDER" \
+            --service-account="$GCP_SERVICE_ACCOUNT" \
+            --credential-source-file="$RUNNER_TEMP/oidc.jwt" \
+            --output-file="$RUNNER_TEMP/gcp-creds.json"
+          gcloud auth login --cred-file="$RUNNER_TEMP/gcp-creds.json" --quiet
+          {
+            printf '%s\n' "$GHCR_TOKEN"
+            tar -czf - -C deploy/maap docker-compose.yml .env.example backup.sh restore-drill.sh deploy.sh
+          } | gcloud compute ssh "$GCP_INSTANCE" \
+            --project="$GCP_PROJECT_ID" \
+            --zone="$GCP_ZONE" \
+            --tunnel-through-iap \
+            --quiet \
+            --command="sudo bash -euo pipefail -c '
+              IFS= read -r GHCR_TOKEN
+              export GHCR_TOKEN
+              stage=\$(mktemp -d)
+              trap \"rm -rf -- \\\"\\\$stage\\\"\" EXIT
+              tar -xzf - -C \"\$stage\"
+              install -d -m 0755 -o root -g root /opt/maap
+              install -m 0644 -o root -g root \"\$stage/docker-compose.yml\" \"\$stage/.env.example\" /opt/maap/
+              install -m 0755 -o root -g root \"\$stage/backup.sh\" \"\$stage/restore-drill.sh\" \"\$stage/deploy.sh\" /opt/maap/
+              /opt/maap/deploy.sh \"$GITHUB_SHA\"
+            '"
