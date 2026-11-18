@@ -212,12 +212,13 @@ test('deploy.sh validates 40-hex SHA tags and updates .env atomically while pres
     const sha = 'f335d2b06f275c3c6fa9552bfbb3cf546f4e95cd';
     const out = execFileSync('bash', [script, sha], {
       cwd: dir,
-      env: { ...process.env, PATH: `${dir}:${process.env.PATH}` },
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, TUNNEL_TOKEN: 'eyJ-live-tunnel' },
       encoding: 'utf8',
     });
     assert.match(out, new RegExp(`Deployed ${sha}`));
     const envText = await readFile(join(dir, '.env'), 'utf8');
     assert.match(envText, new RegExp(`^UMAMI_IMAGE_TAG=${sha}$`, 'm'));
+    assert.match(envText, /^TUNNEL_TOKEN=eyJ-live-tunnel$/m);
     assert.match(envText, /^POSTGRES_PASSWORD=keep-db$/m);
     assert.match(envText, /^APP_SECRET=keep-secret$/m);
     assert.match(envText, /^TWO_FACTOR_ENCRYPTION_KEY=keep-2fa$/m);

@@ -73,6 +73,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor == github.repository_owner
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TUNNEL_TOKEN: ${{ secrets.TUNNEL_TOKEN }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GCP_ZONE: ${{ secrets.GCP_ZONE }}
           GCP_INSTANCE: ${{ secrets.GCP_INSTANCE }}
@@ -88,7 +89,7 @@ jobs:
             --output-file="$RUNNER_TEMP/gcp-creds.json"
           gcloud auth login --cred-file="$RUNNER_TEMP/gcp-creds.json" --quiet
           {
-            printf '%s\n' "$GHCR_TOKEN"
+            printf '%s\n%s\n' "$GHCR_TOKEN" "$TUNNEL_TOKEN"
             tar -czf - -C deploy/maap docker-compose.yml .env.example backup.sh restore-drill.sh deploy.sh
           } | gcloud compute ssh "$GCP_INSTANCE" \
             --project="$GCP_PROJECT_ID" \
@@ -97,7 +98,8 @@ jobs:
             --quiet \
             --command="sudo bash -euo pipefail -c '
               IFS= read -r GHCR_TOKEN
-              export GHCR_TOKEN
+              IFS= read -r TUNNEL_TOKEN
+              export GHCR_TOKEN TUNNEL_TOKEN
               stage=\$(mktemp -d)
               trap \"rm -rf -- \\\"\\\$stage\\\"\" EXIT
               tar -xzf - -C \"\$stage\"
