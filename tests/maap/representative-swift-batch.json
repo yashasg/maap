@@ -1,0 +1,48 @@
+[
+  {
+    "receivedAt": "2026-03-01T10:20:30+0000",
+    "appID": "3D452373-9D34-41F4-A80D-5B03ADD59B1C",
+    "clientUser": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sessionID": "DB99DEC6-7289-421E-96BD-E9824658F4BD",
+    "type": "TelemetryDeck.Navigation.pathChanged",
+    "isTestMode": "false",
+    "payload": {
+      "TelemetryDeck.Navigation.schemaVersion": "1",
+      "TelemetryDeck.Navigation.identifier": "/home -> /library",
+      "TelemetryDeck.Navigation.sourcePath": "/home",
+      "TelemetryDeck.Navigation.destinationPath": "/library",
+      "TelemetryDeck.AppInfo.version": "1.2.3",
+      "TelemetryDeck.AppInfo.buildNumber": "42",
+      "TelemetryDeck.Device.modelName": "iPad14,3",
+      "TelemetryDeck.Device.operatingSystem": "iOS",
+      "TelemetryDeck.Device.systemMajorMinorVersion": "iOS 18.4",
+      "TelemetryDeck.Device.systemVersion": "iOS 18.4.1",
+      "TelemetryDeck.Device.screenResolutionWidth": "834.0",
+      "TelemetryDeck.Device.screenResolutionHeight": "1194.0",
+      "TelemetryDeck.UserPreference.language": "fr-CA",
+      "TelemetryDeck.UserPreference.region": "CA",
+      "TelemetryDeck.Accessibility.isBoldTextEnabled": "false",
+      "TelemetryDeck.Retention.totalSessionsCount": "4",
+      "appVersion": "1.2.3",
+      "buildNumber": "42",
+      "modelName": "iPad14,3",
+      "systemVersion": "iOS 18.4.1",
+      "region": "CA",
+      "locale": "fr_CA",
+      "shelf": "fiction"
+    }
+  },
+  {
+    "receivedAt": "2026-03-01T10:20:31+0000",
+    "appID": "3D452373-9D34-41F4-A80D-5B03ADD59B1C",
+    "clientUser": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sessionID": "DB99DEC6-7289-421E-96BD-E9824658F4BD",
+    "type": "MAAP.acceptanceTapped",
+    "isTestMode": "false",
+    "floatValue": 2.5,
+    "payload": {
+      "TelemetryDeck.AppInfo.version": "1.2.3",
+      "source": "library"
+    }
+  }
+]

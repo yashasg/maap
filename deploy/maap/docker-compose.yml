@@ -1,0 +1,75 @@
+name: maap
+
+x-logging: &logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: "postgres:16-alpine"
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=20", "-c", "work_mem=4MB"]
+    mem_limit: "200m"
+    environment:
+      POSTGRES_DB: "umami"
+      POSTGRES_USER: "umami"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "umami", "-d", "umami"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  umami:
+    image: "${UMAMI_IMAGE:-ghcr.io/yashasg/umami-td}:${UMAMI_IMAGE_TAG:?Set the approved release SHA tag}"
+    mem_limit: "450m"
+    environment:
+      DATABASE_URL: "postgresql://umami:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/umami"
+      APP_SECRET: "${APP_SECRET:?Set APP_SECRET}"
+      TWO_FACTOR_ENCRYPTION_KEY: "${TWO_FACTOR_ENCRYPTION_KEY:?Set TWO_FACTOR_ENCRYPTION_KEY}"
+      NODE_OPTIONS: "--max-old-space-size=256"
+      DISABLE_TELEMETRY: "1"
+      MCP_ENABLED: "1"
+      TD_HOSTNAME: "${TD_HOSTNAME:-app.ios}"
+      TD_TEST_WEBSITE_ID: "${TD_TEST_WEBSITE_ID:-}"
+      TD_ALLOWED_KEYS: "${TD_ALLOWED_KEYS:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [database, edge]
+    init: true
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "4", "http://127.0.0.1:3000/api/heartbeat"]
+      start_period: 90s
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  cloudflared:
+    image: "cloudflare/cloudflared:2026.11.0"
+    mem_limit: "64m"
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "${TUNNEL_TOKEN:?Set TUNNEL_TOKEN}"
+    depends_on:
+      umami:
+        condition: service_healthy
+    networks: [edge]
+    restart: unless-stopped
+    logging: *logging
+
+networks:
+  database:
+    internal: true
+  edge: {}
+
+volumes:
+  pgdata:
