@@ -27,6 +27,9 @@ export function useFilterParameters({
           filterParams[key] = query[key];
         }
       }
+      if (query.testMode === 'true' && filterParams.tag === undefined) {
+        filterParams.tag = 'test';
+      }
     }
 
     const params = {

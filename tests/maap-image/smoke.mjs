@@ -24,11 +24,7 @@ const { token } = await (
 ).json();
 assert.ok(token);
 const appID = randomUUID();
-const testID = process.env.TD_TEST_WEBSITE_ID;
-assert.ok(testID);
-for (const [id, name] of [[appID, 'Maap CI'], [testID, 'Maap CI test']]) {
-  await request('/api/websites', { token, body: { id, name, domain: 'app.ios' } });
-}
+await request('/api/websites', { token, body: { id: appID, name: 'Maap CI', domain: 'app.ios' } });
 
 const startAt = Date.now() - 60000;
 const historicalAt = startAt - 10 * 60000;
@@ -59,16 +55,15 @@ const actions = await request('/v2/namespace/ios/', {
 assert.deepEqual(await actions.json(), { accepted: 2, rejected: 0, dropped: 0 });
 
 const endAt = Date.now() + 1000;
-async function metric(website, type, from = startAt, to = endAt) {
-  const params = new URLSearchParams({ type, startAt: from, endAt: to });
+async function metric(website, type, from = startAt, to = endAt, extra = {}) {
+  const params = new URLSearchParams({ type, startAt: from, endAt: to, ...extra });
   const rows = await (await request(`/api/websites/${website}/metrics?${params}`, { token })).json();
   return rows.map(({ x }) => x).sort();
 }
 assert.deepEqual(await metric(appID, 'path'), screens.map(screen => `/${screen}`).sort());
 assert.deepEqual(await metric(appID, 'browser'), ['App 1.2.3']);
-assert.deepEqual(await metric(appID, 'event'), ['DemoEvent']);
-assert.deepEqual(await metric(testID, 'event'), []);
-assert.deepEqual(await metric(testID, 'event', historicalAt - 1000, historicalAt + 1000), ['TestOnly']);
+assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, endAt), ['DemoEvent']);
+assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, historicalAt + 1000, { tag: 'test' }), ['TestOnly']);
 const filter = new URLSearchParams({ startAt, endAt, browser: 'App 1.2.3' });
 const filtered = await request(`/api/websites/${appID}/stats?${filter}`, { token });
 assert.equal(Number((await filtered.json()).pageviews), 3);

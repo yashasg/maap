@@ -94,14 +94,18 @@ test('only signals older than five minutes enter send historical mode', () => {
   );
 });
 
-test('test-mode signals use only the test website, or drop when it is unset', () => {
+test('test-mode signals tag events with test on the app website, or use testWebsiteId override', () => {
   const options = { testWebsiteId: '51e5d7e8-47d1-48fe-8545-59be78020636' };
   for (const isTestMode of ['true', true]) {
     const signal = { ...action, isTestMode };
-    assert.equal(mapSignal(signal), null);
+    const mapped = mapSignal(signal);
+    assert.equal(mapped.payload.website, action.appID.toLowerCase());
+    assert.equal(mapped.payload.tag, 'test');
     assert.equal(mapSignal(signal, options).payload.website, options.testWebsiteId);
+    assert.equal(mapSignal(signal, options).payload.tag, 'test');
   }
   assert.equal(mapSignal(action, options).payload.website, action.appID.toLowerCase());
+  assert.equal(mapSignal(action, options).payload.tag, undefined);
   assert.throws(() => mapSignal({ ...action, isTestMode: 'unknown' }));
 });
 
@@ -144,14 +148,15 @@ test('isolates partial failures and forwards fresh POSTs with client context', a
   });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { accepted: 2, rejected: 6, dropped: 1 });
-  assert.deepEqual(calls.map(c => c.payload.name), [
-    undefined,
-    'UnknownWebsite',
-    'WriterUnavailable',
-    action.type,
+  assert.deepEqual(await response.json(), { accepted: 3, rejected: 6, dropped: 0 });
+  assert.deepEqual(calls.map(c => ({ name: c.payload.name, tag: c.payload.tag })), [
+    { name: undefined, tag: undefined },
+    { name: action.type, tag: 'test' },
+    { name: 'UnknownWebsite', tag: undefined },
+    { name: 'WriterUnavailable', tag: undefined },
+    { name: action.type, tag: undefined },
   ]);
-  assert.equal(new Set(calls.map(c => c.request)).size, 4);
+  assert.equal(new Set(calls.map(c => c.request)).size, 5);
   for (const { request: r } of calls) {
     assert.equal(r.method, 'POST');
     assert.equal(r.url, 'https://metrics.example/api/send');

@@ -233,3 +233,16 @@ test('parseRequest allows ordinary sessions on every route', async () => {
 
   expect(error).toBeUndefined();
 });
+
+test('getQueryFilters excludes test-tagged events by default and selects them in testMode', async () => {
+  const base = {
+    startAt: String(+new Date('2026-09-01T00:00:00.000Z')),
+    endAt: String(+new Date('2026-09-02T00:00:00.000Z')),
+  };
+
+  const prod = await getQueryFilters(base, 'website-1');
+  expect(prod.tag).toBe('neq.test');
+
+  const testOnly = await getQueryFilters({ ...base, testMode: 'true' }, 'website-1');
+  expect(testOnly.tag).toBe('test');
+});

@@ -53,8 +53,9 @@ export function mapSignal(signal: unknown, options: Options = {}, now = Date.now
   if (test !== undefined && !['true', 'false', true, false].some(v => v === test)) {
     throw new Error('Invalid isTestMode');
   }
-  const website = test === 'true' || test === true ? options.testWebsiteId : signal.appID;
-  if (!website) return null; // Never fall back to production for test signals.
+  const isTest = test === 'true' || test === true;
+  // ponytail: tag='test' on the same appID website lets Umami's native tag filter power the Test Mode toggle without schema changes
+  const website = isTest && options.testWebsiteId ? options.testWebsiteId : signal.appID;
 
   const properties = signal.payload === undefined ? {} : signal.payload;
   if (!isRecord(properties) || Object.values(properties).some(v => typeof v !== 'string')) {
@@ -119,6 +120,7 @@ export function mapSignal(signal: unknown, options: Options = {}, now = Date.now
       language: props['TelemetryDeck.UserPreference.language'] ?? props.preferredLanguage,
       url: `/${(destination || '').replace(/^[\\/]+/, '')}`,
       name: nav ? undefined : signal.type,
+      tag: isTest ? 'test' : undefined,
       data,
     },
   };

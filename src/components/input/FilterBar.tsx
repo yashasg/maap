@@ -39,7 +39,7 @@ export function FilterBar({ websiteId }: { websiteId?: string }) {
   };
 
   const handleResetFilter = () => {
-    router.push(replaceParams());
+    router.push(replaceParams(query.testMode ? { testMode: query.testMode } : undefined));
   };
 
   const handleSessionPropertyFilterRemove = (index: number) => {

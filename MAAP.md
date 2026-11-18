@@ -9,7 +9,7 @@ existing `/api/send` handler in-process. No translation service is required.
 | `TelemetryDeck.Navigation.pathChanged` | Pageview at the destination screen path |
 | Any other signal type | Named event at `/` |
 | `TelemetryDeck.AppInfo.version` | Browser `App <version>` |
-| `isTestMode: "true"` | Separate `TD_TEST_WEBSITE_ID`, or intentionally dropped if unset |
+| `isTestMode: "true"` | Tagged `tag = "test"` on the same website; filtered by the dashboard **Test Mode** toggle |
 
 `appID` is the production website UUID. `clientUser` is already hashed; Umami
 derives its own sessions and visits rather than importing `sessionID`. Signals
