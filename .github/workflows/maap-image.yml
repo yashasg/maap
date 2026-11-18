@@ -1,0 +1,69 @@
+name: Maap image
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maap-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    env:
+      COMPOSE_FILE: ${{ github.workspace }}/deploy/maap/docker-compose.yml
+      COMPOSE_PROJECT_NAME: maap-ci
+      UMAMI_IMAGE_TAG: ${{ github.sha }}
+      TD_TEST_WEBSITE_ID: 1c477a93-362f-4e31-b61d-19d1bbd5bf27
+      # Required by Compose during interpolation; no connector is started in CI.
+      TUNNEL_TOKEN: unused-in-disposable-ci
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22.23.4'
+          package-manager-cache: false
+      - name: Test TelemetryDeck adapter
+        run: node --test tests/maap/*.test.mjs
+
+      - name: Build release Dockerfile for amd64
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/umami-td"
+          echo "UMAMI_IMAGE=$image" >> "$GITHUB_ENV"
+          docker build --platform linux/amd64 --tag "$image:$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" .
+      - name: Exercise the built image with PostgreSQL
+        run: |
+          export APP_SECRET="$(openssl rand -hex 32)"
+          export TWO_FACTOR_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+          export POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+          trap 'docker compose down --volumes' EXIT
+          docker compose config --quiet
+          docker compose pull db
+          docker compose up --wait --wait-timeout 240 --pull never db umami
+          docker compose exec -T umami node --input-type=module < tests/maap-image/smoke.mjs
+          export BACKUP_DIR="$(mktemp -d "$RUNNER_TEMP/maap-backup.XXXXXXXX")"
+          bash deploy/maap/backup.sh
+          bash deploy/maap/restore-drill.sh "$BACKUP_DIR"/maap-*.dump
+      - name: Publish tested image to GHCR
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$UMAMI_IMAGE:$GITHUB_SHA"
+          docker tag "$UMAMI_IMAGE:$GITHUB_SHA" "$UMAMI_IMAGE:latest"
+          docker push "$UMAMI_IMAGE:latest"
