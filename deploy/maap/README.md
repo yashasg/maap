@@ -4,6 +4,10 @@
 
 ## Run a release
 
+Default-branch pushes by the repository owner automatically publish `ghcr.io/yashasg/umami-td:<git-sha>` and invoke `/opt/maap/deploy.sh <git-sha>` on `maap-vm` (`us-west1-b`) over Google Cloud IAP using Workload Identity Federation (OIDC). `deploy.sh` backs up a running database to `/var/backups/maap`, atomically updates `UMAMI_IMAGE_TAG` in `/opt/maap/.env`, pulls and restarts `db` and `umami`, verifies `/api/heartbeat`, and starts `cloudflared` once `TUNNEL_TOKEN` is configured.
+
+For manual setup or inspection on the host:
+
 1. Copy the contents of this directory from the approved release into a root-owned runtime directory **outside any checkout/build context**, e.g. `/opt/maap`. Keep this directory and the `maap` project name stable between releases so `pgdata` is reused. Run the following there as the stack operator. On **first install only**:
 
    ```sh

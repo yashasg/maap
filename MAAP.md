@@ -21,8 +21,9 @@ Inspect the counts, not just HTTP 200.
 tests on Linux, builds the upstream Dockerfile for `linux/amd64`, and exercises
 the image against disposable Postgres before publishing. Pull requests do not
 publish. Successful default-branch runs publish `ghcr.io/yashasg/umami-td`
-tagged with the full Git SHA and `latest`. Deploy the SHA, not `latest`. The
-fork needs Actions enabled and permission for its workflow to write GHCR packages.
+tagged with the full Git SHA and `latest`, then deploy that exact SHA to the
+GCP `e2-micro` VM (`maap-vm` in `us-west1-b`) over IAP SSH using keyless GCP
+Workload Identity Federation (`deploy/maap/deploy.sh`).
 
 - [Operator runbook](deploy/maap/README.md): use the **Maap** Compose file (not
   the upstream root Compose file), enroll TOTP, set up websites and MCP, and

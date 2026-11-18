@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { chmod, copyFile, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { ingestBatch, mapSignal } from '../../src/lib/telemetrydeck.ts';
 
@@ -175,4 +178,51 @@ test('requires a JSON array, but acknowledges empty and wholly rejected batches'
   const failed = await ingestBatch(request(JSON.stringify([action])), send);
   assert.equal(failed.status, 200);
   assert.deepEqual(await failed.json(), { accepted: 0, rejected: 1, dropped: 0 });
+});
+
+test('deploy.sh validates 40-hex SHA tags and updates .env atomically while preserving secrets', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'maap-deploy-test-'));
+  try {
+    const script = join(dir, 'deploy.sh');
+    await copyFile(new URL('../../deploy/maap/deploy.sh', import.meta.url), script);
+    await chmod(script, 0o755);
+
+    const bin = join(dir, 'bin');
+    await writeFile(
+      join(dir, 'docker'),
+      '#!/bin/bash\nexit 0\n',
+      { mode: 0o755 },
+    );
+    await writeFile(
+      join(dir, '.env'),
+      'POSTGRES_PASSWORD=keep-db\nAPP_SECRET=keep-secret\nTWO_FACTOR_ENCRYPTION_KEY=keep-2fa\nUMAMI_IMAGE_TAG=0000000000000000000000000000000000000000\nTUNNEL_TOKEN=pending-cloudflare-tunnel-token\n',
+      { mode: 0o600 },
+    );
+
+    for (const invalid of ['', 'latest', 'abc123', 'f335d2b06f275c3c6fa9552bfbb3cf546f4e95cd;rm']) {
+      assert.throws(() =>
+        execFileSync('bash', [script, invalid], {
+          cwd: dir,
+          env: { ...process.env, PATH: `${dir}:${process.env.PATH}` },
+          stdio: 'pipe',
+        }),
+      );
+    }
+
+    const sha = 'f335d2b06f275c3c6fa9552bfbb3cf546f4e95cd';
+    const out = execFileSync('bash', [script, sha], {
+      cwd: dir,
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}` },
+      encoding: 'utf8',
+    });
+    assert.match(out, new RegExp(`Deployed ${sha}`));
+    const envText = await readFile(join(dir, '.env'), 'utf8');
+    assert.match(envText, new RegExp(`^UMAMI_IMAGE_TAG=${sha}$`, 'm'));
+    assert.match(envText, /^POSTGRES_PASSWORD=keep-db$/m);
+    assert.match(envText, /^APP_SECRET=keep-secret$/m);
+    assert.match(envText, /^TWO_FACTOR_ENCRYPTION_KEY=keep-2fa$/m);
+    assert.equal((await stat(join(dir, '.env'))).mode & 0o777, 0o600);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
