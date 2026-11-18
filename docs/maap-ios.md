@@ -27,6 +27,8 @@ Use the **unmodified TelemetryDeck Swift SDK, exact version 2.14.2**. The contra
        let config = TelemetryDeck.Config(appID: id, baseURL: base)
        #if DEBUG
        config.testMode = true
+       #else
+       config.testMode = Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
        #endif
        // Optional: insert the DEBUG-only capture handler below here, before initialize.
        TelemetryDeck.initialize(config: config)

@@ -1,4 +1,4 @@
-import { Icon, Row, Text } from '@umami/react-zen';
+import { Icon, Row, Switch, Text } from '@umami/react-zen';
 import { Favicon } from '@/components/common/Favicon';
 import { IconLabel } from '@/components/common/IconLabel';
 import { LinkButton } from '@/components/common/LinkButton';
@@ -15,8 +15,9 @@ export function WebsiteHeader({
   allowLink?: boolean;
 }) {
   const website = useWebsite();
-  const { renderUrl, pathname } = useNavigation();
+  const { renderUrl, pathname, router, updateParams, query } = useNavigation();
   const isSettings = pathname.endsWith('/settings');
+  const isTestMode = query.testMode === 'true' || query.tag === 'test' || query.tag === 'eq.test';
 
   const { t, labels } = useMessages();
 
@@ -31,6 +32,19 @@ export function WebsiteHeader({
       titleHref={allowLink ? renderUrl(`/websites/${website.id}`, false) : undefined}
     >
       <Row alignItems="center" gap="6" wrap="wrap">
+        <Switch
+          isSelected={isTestMode}
+          onChange={checked =>
+            router.push(
+              updateParams({
+                testMode: checked ? 'true' : undefined,
+                tag: query.tag === 'test' || query.tag === 'eq.test' ? undefined : query.tag,
+              }),
+            )
+          }
+        >
+          Test Mode
+        </Switch>
         <ActiveUsers websiteId={website.id} allowLink={allowLink} />
 
         {showActions && (

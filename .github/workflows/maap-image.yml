@@ -26,7 +26,6 @@ jobs:
       COMPOSE_FILE: ${{ github.workspace }}/deploy/maap/docker-compose.yml
       COMPOSE_PROJECT_NAME: maap-ci
       UMAMI_IMAGE_TAG: ${{ github.sha }}
-      TD_TEST_WEBSITE_ID: 1c477a93-362f-4e31-b61d-19d1bbd5bf27
       # Required by Compose during interpolation; no connector is started in CI.
       TUNNEL_TOKEN: unused-in-disposable-ci
     steps:

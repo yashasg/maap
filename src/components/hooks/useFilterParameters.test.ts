@@ -96,6 +96,13 @@ describe('useFilterParameters', () => {
     expect(params).not.toHaveProperty('pageSize');
   });
 
+  test('maps testMode=true to tag=test when no explicit tag filter is set', () => {
+    nav.query = { testMode: 'true' };
+    const params = setup();
+
+    expect(params.tag).toBe('test');
+  });
+
   test('drops filter params and share-gated params when filtering is disallowed', () => {
     shareValue = { parameters: { allowFilter: false } };
     nav.query = {

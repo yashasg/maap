@@ -7,7 +7,7 @@ import type { ActiveVisitors } from '@/lib/types';
 const FUNCTION_NAME = 'getActiveVisitors';
 
 export async function getActiveVisitors(
-  ...args: [websiteId: string]
+  ...args: [websiteId: string, filters?: { tag?: string }]
 ): Promise<ActiveVisitors | null> {
   return runQuery({
     [PRISMA]: () => relationalQuery(...args),
@@ -15,9 +15,10 @@ export async function getActiveVisitors(
   });
 }
 
-async function relationalQuery(websiteId: string) {
+async function relationalQuery(websiteId: string, filters?: { tag?: string }) {
   const { rawQuery } = prisma;
   const startDate = subMinutes(new Date(), 5);
+  const isTest = filters?.tag === 'test' || filters?.tag === 'eq.test';
 
   const result = await rawQuery(
     `
@@ -25,6 +26,7 @@ async function relationalQuery(websiteId: string) {
     from website_event
     where website_id = {{websiteId::uuid}}
     and created_at >= {{startDate}}
+    and ${isTest ? "tag = 'test'" : "coalesce(tag, '') != 'test'"}
     `,
     { websiteId, startDate },
     FUNCTION_NAME,
@@ -33,9 +35,13 @@ async function relationalQuery(websiteId: string) {
   return result?.[0] ?? null;
 }
 
-async function clickhouseQuery(websiteId: string): Promise<ActiveVisitors | null> {
+async function clickhouseQuery(
+  websiteId: string,
+  filters?: { tag?: string },
+): Promise<ActiveVisitors | null> {
   const { rawQuery } = clickhouse;
   const startDate = subMinutes(new Date(), 5);
+  const isTest = filters?.tag === 'test' || filters?.tag === 'eq.test';
 
   const result = await rawQuery(
     `
@@ -44,6 +50,7 @@ async function clickhouseQuery(websiteId: string): Promise<ActiveVisitors | null
     from website_event
     where website_id = {websiteId:UUID}
       and created_at >= {startDate:DateTime64}
+      and ${isTest ? "tag = 'test'" : "tag != 'test'"}
     `,
     { websiteId, startDate },
     FUNCTION_NAME,

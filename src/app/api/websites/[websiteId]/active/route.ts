@@ -7,7 +7,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ websiteId: string }> },
 ) {
-  const { auth, error } = await parseRequest(request);
+  const { auth, query, error } = await parseRequest(request);
 
   if (error) {
     return error();
@@ -19,7 +19,9 @@ export async function GET(
     return unauthorized();
   }
 
-  const visitors = await getActiveVisitors(websiteId);
+  const visitors = await getActiveVisitors(websiteId, {
+    tag: query?.tag ?? (query?.testMode === 'true' ? 'test' : undefined),
+  });
 
   return json(visitors);
 }

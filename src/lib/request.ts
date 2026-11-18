@@ -43,7 +43,11 @@ export async function parseRequest(
       // Re-add dynamic params stripped by Zod schema: suffixed filter params (browser1, os2)
       for (const key of Object.keys(rawQuery)) {
         if (
-          (/\d+$/.test(key) || /^pf_/.test(key) || /^epf\d+$/.test(key) || /^spf\d+$/.test(key)) &&
+          (/\d+$/.test(key) ||
+            /^pf_/.test(key) ||
+            /^epf\d+$/.test(key) ||
+            /^spf\d+$/.test(key) ||
+            key === 'testMode') &&
           !(key in query)
         ) {
           query[key] = rawQuery[key];
@@ -205,6 +209,10 @@ export async function getQueryFilters(
 
     if (resolvedParams.excludeBounce) {
       Object.assign(filters, { excludeBounce: true });
+    }
+
+    if (filters.tag === undefined) {
+      filters.tag = resolvedParams.testMode === 'true' ? 'test' : 'neq.test';
     }
   }
 
