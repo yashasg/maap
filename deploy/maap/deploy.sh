@@ -53,6 +53,8 @@ docker compose config --quiet
 docker compose pull db umami
 docker compose up -d --wait --wait-timeout 240 db umami
 docker compose exec -T umami curl -fsS --max-time 4 http://127.0.0.1:3000/api/heartbeat >/dev/null
+# ponytail: warm .next into page cache and V8 route cache so pd-standard HDD doesn't stall first browser load
+docker compose exec -T umami sh -c 'find .next -type f -exec cat {} + >/dev/null 2>&1; curl -fsS --max-time 10 http://127.0.0.1:3000/login http://127.0.0.1:3000/websites >/dev/null 2>&1 || true'
 
 tunnel_token="$(awk -F= '/^TUNNEL_TOKEN=/{sub(/^[^=]*=/, ""); print; exit}' .env)"
 if [[ -n $tunnel_token && $tunnel_token != "pending-cloudflare-tunnel-token" ]]; then

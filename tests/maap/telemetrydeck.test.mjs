@@ -195,7 +195,7 @@ test('deploy.sh validates 40-hex SHA tags and updates .env atomically while pres
     const bin = join(dir, 'bin');
     await writeFile(
       join(dir, 'docker'),
-      '#!/bin/bash\nexit 0\n',
+      '#!/bin/bash\nprintf "%s\\n" "$*" >> docker.log\nexit 0\n',
       { mode: 0o755 },
     );
     await writeFile(
@@ -228,6 +228,8 @@ test('deploy.sh validates 40-hex SHA tags and updates .env atomically while pres
     assert.match(envText, /^APP_SECRET=keep-secret$/m);
     assert.match(envText, /^TWO_FACTOR_ENCRYPTION_KEY=keep-2fa$/m);
     assert.equal((await stat(join(dir, '.env'))).mode & 0o777, 0o600);
+    const dockerLog = await readFile(join(dir, 'docker.log'), 'utf8');
+    assert.match(dockerLog, /find \.next -type f/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
