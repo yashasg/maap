@@ -14,21 +14,26 @@ UMAMI_IMAGE_TAG=${tag}
 POSTGRES_PASSWORD=$(openssl rand -hex 32)
 APP_SECRET=$(openssl rand -hex 32)
 TWO_FACTOR_ENCRYPTION_KEY=$(openssl rand -hex 32)
-TUNNEL_TOKEN=pending-cloudflare-tunnel-token
+TUNNEL_TOKEN=${TUNNEL_TOKEN:-pending-cloudflare-tunnel-token}
 TD_HOSTNAME=app.ios
 TD_TEST_WEBSITE_ID=
 TD_ALLOWED_KEYS=
 EOF
 else
-  awk -v tag="$tag" '
-    BEGIN { updated = 0 }
-    /^UMAMI_IMAGE_TAG=/ { print "UMAMI_IMAGE_TAG=" tag; updated = 1; next }
+  awk -v tag="$tag" -v tunnel="${TUNNEL_TOKEN:-}" '
+    BEGIN { updated_tag = 0; updated_tunnel = 0 }
+    /^UMAMI_IMAGE_TAG=/ { print "UMAMI_IMAGE_TAG=" tag; updated_tag = 1; next }
+    /^TUNNEL_TOKEN=/ && tunnel != "" { print "TUNNEL_TOKEN=" tunnel; updated_tunnel = 1; next }
     { print }
-    END { if (!updated) print "UMAMI_IMAGE_TAG=" tag }
+    END {
+      if (!updated_tag) print "UMAMI_IMAGE_TAG=" tag
+      if (tunnel != "" && !updated_tunnel) print "TUNNEL_TOKEN=" tunnel
+    }
   ' .env > .env.tmp
   chmod 0600 .env.tmp
   mv -f .env.tmp .env
 fi
+unset TUNNEL_TOKEN
 chmod 0600 .env
 
 if [[ -n "${GHCR_TOKEN:-}" ]]; then
