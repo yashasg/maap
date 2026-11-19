@@ -19,10 +19,11 @@ async function request(path, { body, token, headers } = {}) {
   return res;
 }
 
-const { token } = await (
+const { token, user } = await (
   await request('/api/auth/login', { body: { username: 'admin', password: 'umami' } })
 ).json();
 assert.ok(token);
+assert.ok(user?.id);
 const appID = randomUUID();
 await request('/api/websites', {
   token,
@@ -76,8 +77,13 @@ async function metric(website, type, from = startAt, to = endAt, extra = {}) {
   return rows.map(({ x }) => x).sort();
 }
 assert.deepEqual(await metric(appID, 'path'), screens.map(screen => `/${screen}`).sort());
+assert.deepEqual(await metric(appID, 'fullPath'), screens.map(screen => `/${screen}`).sort());
+assert.deepEqual(await metric(appID, 'entry'), screens.map(screen => `/${screen}`).sort());
+assert.deepEqual(await metric(appID, 'channel'), ['direct']);
+assert.deepEqual(await metric(appID, 'referrer'), []);
 assert.deepEqual(await metric(appID, 'browser'), ['App 1.2.3']);
 assert.deepEqual(await metric(appID, 'country'), ['US']);
+assert.deepEqual(await metric(appID, 'region'), ['US-WA']);
 assert.deepEqual(await metric(appID, 'city'), ['Seattle']);
 assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, endAt), ['DemoEvent']);
 assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, historicalAt + 1000, { tag: 'test' }), ['TestOnly']);
@@ -137,6 +143,7 @@ for (const apiPath of [
   '/api/auth/verify',
   '/api/2fa/status',
   '/api/me/websites',
+  `/api/users/${user.id}/websites`,
   `/api/websites/${appID}`,
   `/api/websites/charts?ids=${appID}&startAt=${startAt}&endAt=${endAt}`,
   `/api/websites/${appID}/pageviews?startAt=${startAt}&endAt=${endAt}`,
