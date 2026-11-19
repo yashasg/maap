@@ -109,6 +109,38 @@ test('test-mode signals tag events with test on the app website, or use testWebs
   assert.throws(() => mapSignal({ ...action, isTestMode: 'unknown' }));
 });
 
+test('maps macOS and Android signals to platform hostnames, devices, and user agents', () => {
+  const mac = mapSignal({
+    ...action,
+    payload: {
+      ...action.payload,
+      'TelemetryDeck.Device.operatingSystem': 'macOS',
+      'TelemetryDeck.Device.systemMajorMinorVersion': 'macOS 15.2',
+      'TelemetryDeck.Device.systemVersion': 'macOS 15.2.1',
+      'TelemetryDeck.Device.modelName': 'Mac16,1',
+    },
+  }).payload;
+  assert.equal(mac.hostname, 'app.macos');
+  assert.equal(mac.device, 'desktop');
+  assert.equal(mac.os, 'macOS 15.2');
+  assert.match(mac.userAgent, /Macintosh; Intel Mac OS X 15_2_1.*Safari/);
+
+  const android = mapSignal({
+    ...action,
+    payload: {
+      ...action.payload,
+      'TelemetryDeck.Device.operatingSystem': 'Android',
+      'TelemetryDeck.Device.systemMajorMinorVersion': 'Android 15',
+      'TelemetryDeck.Device.systemVersion': '15',
+      'TelemetryDeck.Device.modelName': 'Pixel 9',
+    },
+  }).payload;
+  assert.equal(android.hostname, 'app.android');
+  assert.equal(android.device, 'mobile');
+  assert.equal(android.os, 'Android 15');
+  assert.match(android.userAgent, /Linux; Android 15; Pixel 9.*Mobile Safari/);
+});
+
 function request(body, headers = {}) {
   return new Request('https://metrics.example/v2/namespace/ios/', {
     method: 'POST',

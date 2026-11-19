@@ -1,7 +1,9 @@
-# Maap: iOS telemetry for Umami
+# Maap (माप) — Mobile App Analytics Platform
 
-Maap adds a TelemetryDeck receiver to Umami 3.5.0. An unmodified iOS SDK posts its
-batch to `/v2/` or `/v2/namespace/<name>/`; each signal goes through Umami's
+*Maap* means **measure** in Hindi (माप) and stands for **Mobile App Analytics Platform**.
+
+Maap adds a TelemetryDeck-compatible receiver and multi-platform app support (`iOS`, `macOS`, `Android`, and `Website`) to Umami 3.5.0. An unmodified mobile/desktop SDK posts its
+batch to `/v2/` or `/v2/namespace/<name>/`; each signal goes through the
 existing `/api/send` handler in-process. No translation service is required.
 
 | From the SDK | In the dashboard |
@@ -30,3 +32,8 @@ Workload Identity Federation (`deploy/maap/deploy.sh`).
   verify backups. Supply an already-protected dashboard and public ingestion paths.
 - [iOS integration](docs/maap-ios.md): exact Swift SDK pin and initializer,
   redacted capture procedure, and the timed three-screen/one-event acceptance check.
+
+## Future Architecture Roadmap
+
+- **Low-memory backend (Rust or Swift Vapor):** Replace the TypeScript/Node.js ingestion and query server with a compiled Rust or Swift Vapor service to cut idle RSS from ~125 MiB to single-digit MiB on `e2-micro` hosts.
+- **Lightweight frontend delivery:** Replace the Next.js SSR runtime with a static SPA / memory-friendly frontend server so page loads require zero Node.js server-chunk disk reads.
