@@ -17,5 +17,14 @@ node scripts/update-tracker.js
 # Next's standalone server binds to $HOSTNAME. Some runtimes (e.g. Podman pods)
 # overwrite it with the container hostname, which binds only to the pod IP and
 # breaks localhost healthchecks, so force all interfaces here.
+if [ "${MAAP_SERVER:-rust}" = "node" ]; then
+  export HOSTNAME=0.0.0.0
+  exec node server.js
+fi
+
+if [ "${MAAP_NODE_FALLBACK:-1}" != "0" ]; then
+  HOSTNAME=127.0.0.1 PORT="${MAAP_NODE_PORT:-3001}" node server.js &
+fi
+
 export HOSTNAME=0.0.0.0
-exec node server.js
+exec ./maap-server

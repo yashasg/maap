@@ -33,7 +33,8 @@ Workload Identity Federation (`deploy/maap/deploy.sh`).
 - [iOS integration](docs/maap-ios.md): exact Swift SDK pin and initializer,
   redacted capture procedure, and the timed three-screen/one-event acceptance check.
 
-## Future Architecture Roadmap
+## Server Runtime (`MAAP_SERVER`)
 
-- **Low-memory backend (Rust or Swift Vapor):** Replace the TypeScript/Node.js ingestion and query server with a compiled Rust or Swift Vapor service to cut idle RSS from ~125 MiB to single-digit MiB on `e2-micro` hosts.
-- **Lightweight frontend delivery:** Replace the Next.js SSR runtime with a static SPA / memory-friendly frontend server so page loads require zero Node.js server-chunk disk reads.
+- **`MAAP_SERVER=rust` (default):** Runs the compiled Rust server (`rust/`, Axum + SQLx Postgres) as PID 1 on `:3000`. It natively serves `/v2/*`, `/api/send`, `/api/heartbeat`, and `/app-icon` (`x-maap-server: rust`), proxies Next.js UI routes to `127.0.0.1:3001`, and supports standalone zero-Node execution (`MAAP_NODE_FALLBACK=0`) for `/api/auth/login`, `/api/websites`, `/api/websites/:id/metrics`, `/api/websites/:id/stats`, `/api/me/api-keys`, and `/mcp`.
+- **`MAAP_SERVER=node`:** Falls back to the legacy Node.js `server.js` directly on `:3000`.
+- **Lightweight frontend delivery (next):** Replace the Next.js SSR UI with a static SPA so `MAAP_NODE_FALLBACK=0` becomes the permanent default.

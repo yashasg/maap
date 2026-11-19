@@ -36,6 +36,7 @@ services:
       NODE_OPTIONS: "--max-old-space-size=256"
       DISABLE_TELEMETRY: "1"
       DISABLE_GEOIP: "${DISABLE_GEOIP:-1}"
+      MAAP_SERVER: "${MAAP_SERVER:-rust}"
       MCP_ENABLED: "1"
       TD_HOSTNAME: "${TD_HOSTNAME:-app.ios}"
       TD_TEST_WEBSITE_ID: "${TD_TEST_WEBSITE_ID:-}"

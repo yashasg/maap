@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
-const origin = 'http://127.0.0.1:3000';
+const origin = process.env.MAAP_SMOKE_ORIGIN || 'http://127.0.0.1:3000';
 async function request(path, { body, token, headers } = {}) {
   const res = await fetch(origin + path, {
     method: body === undefined ? 'GET' : 'POST',
@@ -58,6 +58,7 @@ const navigation = await request('/v2/', {
     payload: { ...base.payload, 'TelemetryDeck.Navigation.destinationPath': `/${screen}` },
   })),
 });
+assert.equal(navigation.headers.get('x-maap-server'), 'rust');
 assert.deepEqual(await navigation.json(), { accepted: 3, rejected: 0, dropped: 0 });
 const actions = await request('/v2/namespace/ios/', {
   body: [
@@ -65,6 +66,7 @@ const actions = await request('/v2/namespace/ios/', {
     { ...base, type: 'TestOnly', isTestMode: 'true', receivedAt: sdkDate(historicalAt) },
   ],
 });
+assert.equal(actions.headers.get('x-maap-server'), 'rust');
 assert.deepEqual(await actions.json(), { accepted: 2, rejected: 0, dropped: 0 });
 
 const endAt = Date.now() + 1000;
