@@ -1,7 +1,41 @@
 import { expect, test } from './fixtures';
 import { login } from './helpers/auth';
+import { UNKNOWN_UUID } from './helpers/constants';
 
 test.describe('Auth', () => {
+  test('self-hosted subscriptions work without Redis and respect team membership', async ({
+    user,
+    seed,
+  }) => {
+    const subscription = await user.get('/api/auth/subscription', {
+      params: { teamId: seed.team.id },
+    });
+    expect(subscription.status).toBe(200);
+    expect(subscription.headers['cache-control']).toMatch(/\bno-(cache|store)\b/);
+    expect(subscription.body).toEqual({
+      hasSubscription: false,
+      isPro: false,
+      isBusiness: false,
+      isNoBilling: false,
+      unlimitedWebsites: false,
+    });
+    const denied = await user.get('/api/auth/subscription', { params: { teamId: UNKNOWN_UUID } });
+    expect(denied.status).toBe(401);
+  });
+
+  test('self-hosted SSO requires authentication and reports that Redis is disabled', async ({
+    api,
+    user,
+  }) => {
+    expect((await api.post('/api/auth/sso')).status).toBe(401);
+    const response = await user.post('/api/auth/sso');
+    expect(response.status).toBe(500);
+    expect(response.body.error).toMatchObject({
+      message: 'Redis is disabled',
+      code: 'server-error',
+    });
+  });
+
   test('POST /api/auth/login returns a token and the user', async ({ api, seed }) => {
     const response = await api.post('/api/auth/login', {
       username: seed.admin.username,

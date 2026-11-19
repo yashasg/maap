@@ -1,6 +1,7 @@
 import type { ApiClient } from './client';
 import { expect, test } from './fixtures';
 import { dateRange } from './helpers/dates';
+import type { SeedState } from './seed/state';
 
 const headers = {
   accept: 'application/json, text/event-stream',
@@ -48,6 +49,52 @@ async function rpc(client: ApiClient, method: string, params: Record<string, unk
   return body.result;
 }
 
+function addedToolCalls(seed: SeedState, websiteId = seed.website.id) {
+  const range = {
+    websiteId,
+    startAt: new Date(seed.range.startAt).toISOString(),
+    endAt: new Date(dateRange(seed).endAt).toISOString(),
+  };
+  return [
+    ['get_website_daterange', { websiteId }],
+    ['get_website_traffic', { ...range, unit: 'day', timezone: 'UTC' }],
+    ['get_website_metrics', { ...range, type: 'path', limit: 1 }],
+    ['get_realtime', { websiteId }],
+    ['get_events', { ...range, pageSize: 2 }],
+    ['get_event_stats', range],
+    ['get_event_series', { ...range, unit: 'day', timezone: 'UTC', limit: 3 }],
+    ['get_event_properties', { ...range, eventName: 'signup', propertyName: 'plan' }],
+    ['get_sessions', { ...range, pageSize: 1 }],
+    ['get_session_stats', range],
+    ['get_session', { websiteId, sessionId: seed.data.sessionId }],
+    ['get_annotations', { websiteId }],
+    ['list_segments', { websiteId }],
+    ['list_funnels', { websiteId }],
+    [
+      'run_funnel',
+      {
+        ...range,
+        steps: [
+          { type: 'path', value: '/' },
+          { type: 'event', value: 'signup' },
+        ],
+      },
+    ],
+    ['get_goals', { websiteId }],
+    ['run_journey', { ...range, steps: 2 }],
+    ['run_retention', { ...range, timezone: 'UTC' }],
+    [
+      'run_attribution',
+      { ...range, model: 'last-click', conversionType: 'event', conversion: 'signup' },
+    ],
+    ['get_revenue', { ...range, currency: seed.data.currency, unit: 'day', timezone: 'UTC' }],
+    [
+      'get_performance',
+      { ...range, metric: 'lcp', breakdown: 'path', unit: 'day', timezone: 'UTC', limit: 3 },
+    ],
+  ] as const;
+}
+
 test.describe('MCP API-key authentication', () => {
   test('rejects anonymous, invalid-key and browser-session callers without OAuth discovery', async ({
     api,
@@ -80,6 +127,9 @@ test.describe('MCP API-key authentication', () => {
     expect(tools.map(tool => tool.name)).toContain('list_websites');
     expect(tools.map(tool => tool.name)).toContain('get_website_stats');
     expect(tools.every(tool => tool.annotations?.readOnlyHint === true)).toBe(true);
+    expect(tools.map(tool => tool.name)).toEqual(
+      expect.arrayContaining(addedToolCalls(seed).map(([name]) => name)),
+    );
 
     const websites = await rpc(apiKey, 'tools/call', { name: 'list_websites', arguments: {} });
     expect(websites.isError).not.toBe(true);
@@ -99,6 +149,21 @@ test.describe('MCP API-key authentication', () => {
     expect(stats.structuredContent.current.pageviews).toBeGreaterThanOrEqual(
       seed.data.expectedPageviews,
     );
+    const results = new Map<string, Awaited<ReturnType<typeof rpc>>>();
+    for (const [name, arguments_] of addedToolCalls(seed)) {
+      const result = await rpc(apiKey, 'tools/call', { name, arguments: arguments_ });
+      expect(result.isError, `${name}: ${JSON.stringify(result.structuredContent)}`).not.toBe(true);
+      expect(result.structuredContent.websiteId).toBe(seed.website.id);
+      results.set(name, result);
+    }
+    const metrics = results.get('get_website_metrics');
+    expect(metrics.isError).not.toBe(true);
+    expect(metrics.structuredContent).toMatchObject({
+      websiteId: seed.website.id,
+      measure: 'views',
+      data: [{ name: expect.any(String), value: expect.any(Number) }],
+    });
+    expect(metrics.structuredContent.data[0].value).toBeGreaterThan(0);
   });
 
   test('enforces key-owner permissions and rejects a revoked key', async ({ api, user, seed }) => {
@@ -125,6 +190,12 @@ test.describe('MCP API-key authentication', () => {
       });
       expect(denied.isError).toBe(true);
       expect(denied.structuredContent.error).toMatchObject({ code: 'access_denied', status: 401 });
+      for (const [name, arguments_] of addedToolCalls(seed, seed.website.id)) {
+        const result = await rpc(keyClient, 'tools/call', { name, arguments: arguments_ });
+        expect(result.isError, name).toBe(true);
+        expect(result.structuredContent.error.code, name).toBe('access_denied');
+        expect([401, 403], name).toContain(result.structuredContent.error.status);
+      }
     } finally {
       expect((await user.del(`/api/me/api-keys/${created.body.id}`)).status).toBe(200);
     }

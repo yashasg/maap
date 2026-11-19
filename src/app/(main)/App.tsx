@@ -17,7 +17,6 @@ import { PasswordChangeRequiredModal } from '@/components/modals/PasswordChangeR
 import { TwoFactorSetupModal } from '@/components/modals/TwoFactorSetupModal';
 import { LAST_TEAM_CONFIG } from '@/lib/constants';
 import { removeItem, setItem } from '@/lib/storage';
-import { SpaRouteView } from './SpaRouteView';
 import { UpdateNotice } from './UpdateNotice';
 
 export function App({ children }) {
@@ -93,7 +92,8 @@ export function App({ children }) {
             This team is temporarily unavailable.
           </Text>
           <Text color="muted">
-            This team&apos;s subscription payment is overdue. Please contact the team owner to restore access.
+            This team&apos;s subscription payment is overdue. Please contact the team owner to
+            restore access.
           </Text>
         </Column>
       </Grid>
@@ -119,7 +119,7 @@ export function App({ children }) {
           aria-hidden={accessBlocked || undefined}
           style={accessBlocked ? { pointerEvents: 'none' } : undefined}
         >
-          <SpaRouteView pathname={pathname}>{children}</SpaRouteView>
+          {children}
         </Column>
       </Column>
       {needsTwoFactorSetup && <TwoFactorSetupModal required={true} />}

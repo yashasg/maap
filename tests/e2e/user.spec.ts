@@ -6,7 +6,7 @@ function userRow(page: Page) {
 }
 
 async function selectRole(page: Page, role: 'user' | 'viewOnly') {
-  await page.getByRole('button', { name: /Role/i }).click();
+  await page.getByRole('combobox', { name: 'Role', exact: true }).click();
   await page.getByTestId(`dropdown-item-${role}`).click();
 }
 

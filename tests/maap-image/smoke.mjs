@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
 const origin = process.env.MAAP_SMOKE_ORIGIN || 'http://127.0.0.1:3000';
+const unmatched = await fetch(`${origin}/api/maap-smoke-unmatched`, { redirect: 'manual' });
+assert.equal(unmatched.status, 404);
+assert.equal(unmatched.headers.get('x-maap-server'), 'rust', 'Unmatched routes must not fall through to Next.js');
+
 async function request(path, { body, token, headers } = {}) {
   const res = await fetch(origin + path, {
     method: body === undefined ? 'GET' : 'POST',
@@ -46,6 +50,7 @@ const base = {
   payload: { 'TelemetryDeck.AppInfo.version': '1.2.3' },
 };
 const screens = ['Home', 'Catalog', 'Detail'];
+const destinations = ['/Home', '/Catalog?gclid=maap-ci', '/Detail'];
 const navigation = await request('/v2/', {
   headers: {
     'cf-connecting-ip': '8.8.8.8',
@@ -53,10 +58,10 @@ const navigation = await request('/v2/', {
     'cf-region-code': 'WA',
     'cf-ipcity': 'Seattle',
   },
-  body: screens.map(screen => ({
+  body: destinations.map(destination => ({
     ...base,
     type: 'TelemetryDeck.Navigation.pathChanged',
-    payload: { ...base.payload, 'TelemetryDeck.Navigation.destinationPath': `/${screen}` },
+    payload: { ...base.payload, 'TelemetryDeck.Navigation.destinationPath': destination },
   })),
 });
 assert.equal(navigation.headers.get('x-maap-server'), 'rust');
@@ -64,11 +69,13 @@ assert.deepEqual(await navigation.json(), { accepted: 3, rejected: 0, dropped: 0
 const actions = await request('/v2/namespace/ios/', {
   body: [
     { ...base, type: 'DemoEvent' },
+    { ...base, type: 'OtherEvent' },
+    { ...base, type: 'DemoEvent' },
     { ...base, type: 'TestOnly', isTestMode: 'true', receivedAt: sdkDate(historicalAt) },
   ],
 });
 assert.equal(actions.headers.get('x-maap-server'), 'rust');
-assert.deepEqual(await actions.json(), { accepted: 2, rejected: 0, dropped: 0 });
+assert.deepEqual(await actions.json(), { accepted: 4, rejected: 0, dropped: 0 });
 
 const endAt = Date.now() + 1000;
 async function metric(website, type, from = startAt, to = endAt, extra = {}) {
@@ -77,22 +84,50 @@ async function metric(website, type, from = startAt, to = endAt, extra = {}) {
   return rows.map(({ x }) => x).sort();
 }
 assert.deepEqual(await metric(appID, 'path'), screens.map(screen => `/${screen}`).sort());
-assert.deepEqual(await metric(appID, 'fullPath'), screens.map(screen => `/${screen}`).sort());
-assert.deepEqual(await metric(appID, 'entry'), screens.map(screen => `/${screen}`).sort());
-assert.deepEqual(await metric(appID, 'channel'), ['direct']);
+assert.deepEqual(await metric(appID, 'fullPath'), destinations.sort());
+assert.deepEqual(await metric(appID, 'path', startAt, endAt, { path: '/Catalog' }), ['/Catalog']);
+assert.deepEqual(await metric(appID, 'entry'), ['/Home']);
+assert.deepEqual(await metric(appID, 'exit'), ['/Detail']);
+assert.deepEqual(await metric(appID, 'channel'), ['paidAds']);
 assert.deepEqual(await metric(appID, 'referrer'), []);
 assert.deepEqual(await metric(appID, 'browser'), ['App 1.2.3']);
 assert.deepEqual(await metric(appID, 'country'), ['US']);
 assert.deepEqual(await metric(appID, 'region'), ['US-WA']);
 assert.deepEqual(await metric(appID, 'city'), ['Seattle']);
-assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, endAt), ['DemoEvent']);
+assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, endAt), ['DemoEvent', 'OtherEvent']);
+assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, endAt, { limit: 1 }), ['DemoEvent']);
+assert.deepEqual(
+  await metric(appID, 'event', historicalAt - 1000, endAt, { limit: 1, offset: 1 }),
+  ['OtherEvent'],
+);
 assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, historicalAt + 1000, { tag: 'test' }), ['TestOnly']);
 const filter = new URLSearchParams({ startAt, endAt, browser: 'App 1.2.3' });
 const filtered = await request(`/api/websites/${appID}/stats?${filter}`, { token });
-assert.equal(Number((await filtered.json()).pageviews), 3);
+const filteredStats = await filtered.json();
+assert.equal(Number(filteredStats.pageviews), 3);
+assert.equal(Number(filteredStats.comparison.pageviews), 0);
+const invalidMetric = await fetch(
+  `${origin}/api/websites/${appID}/metrics?${new URLSearchParams({
+    type: 'not-a-dimension',
+    startAt,
+    endAt,
+  })}`,
+  { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30000) },
+);
+assert.equal(new URL(invalidMetric.url).origin, origin);
+assert.equal(invalidMetric.status, 400);
+assert.equal(invalidMetric.headers.get('x-maap-server'), 'rust');
 
 const { key } = await (await request('/api/me/api-keys', { token, body: { name: 'CI' } })).json();
 assert.ok(key);
+const preflight = await fetch(`${origin}/api/send`, {
+  method: 'OPTIONS',
+  headers: { origin: 'https://tracker.example', 'access-control-request-method': 'POST',
+    'access-control-request-headers': 'content-type,x-umami-website-id' },
+});
+assert.ok(preflight.ok);
+assert.equal(preflight.headers.get('access-control-allow-origin'), '*');
+assert.match(preflight.headers.get('access-control-allow-methods') || '', /POST/);
 // The stateless MCP transport can reply with JSON or an SSE message.
 const version = '2026-07-28';
 const rpc = await request('/mcp', {

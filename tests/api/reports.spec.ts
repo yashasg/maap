@@ -227,6 +227,152 @@ test.describe('Saved reports', () => {
 });
 
 test.describe('Report runs', () => {
+  test('cohorts and universal properties scope every insight plus goal and funnel', async ({
+    admin,
+    seed,
+  }) => {
+    const base = `/api/websites/${seed.website.id}`;
+    const range = dateRange(seed);
+    const created = await admin.post(`${base}/segments`, {
+      type: 'cohort',
+      name: uniqueName('report audience'),
+      parameters: {
+        dateRange: `range:${range.startAt}:${range.endAt}`,
+        action: { type: 'event', value: 'purchase' },
+        filters: [{ name: 'distinctId', operator: 'eq', value: seed.data.distinctIds[0] }],
+        match: 'all',
+      },
+    });
+    expect(created.status).toBe(200);
+    const audience = {
+      ...range,
+      cohort: created.body.id,
+      spf0: '2.eq.seats.5',
+      pf_country: 'eq.NZ',
+      epf: 'ignored',
+      spf: 'ignored',
+    };
+
+    try {
+      const revenue = {
+        ...audience,
+        currency: seed.data.currency,
+        timezone: 'UTC',
+        unit: 'day',
+      };
+      const chart = await admin.get(`${base}/revenue/chart`, { params: revenue });
+      const metrics = await admin.get(`${base}/revenue/metrics`, {
+        params: { ...revenue, type: 'country' },
+      });
+      const sessions = await admin.get(`${base}/revenue/sessions`, { params: revenue });
+      const stats = await admin.get(`${base}/revenue/stats`, { params: revenue });
+      expect(chart.status).toBe(200);
+      expect(chart.body.chart.reduce((sum: number, row: any) => sum + Number(row.y), 0)).toBe(
+        148.5,
+      );
+      expect(metrics.status).toBe(200);
+      expect(metrics.body.reduce((sum: number, row: any) => sum + Number(row.value), 0)).toBe(
+        148.5,
+      );
+      expect(sessions.status).toBe(200);
+      expect(sessions.body.count).toBe(1);
+      expect(stats.status).toBe(200);
+      expect(Number(stats.body.sum)).toBe(148.5);
+
+      const retention = await admin.get(`${base}/retention`, {
+        params: { ...audience, timezone: 'UTC', unit: 'day' },
+      });
+      const journeys = await admin.get(`${base}/journeys`, {
+        params: { ...audience, steps: 3 },
+      });
+      const attribution = await admin.get(`${base}/attribution`, {
+        params: { ...audience, model: 'first-click', type: 'path', step: '/pricing' },
+      });
+      expect(retention.status).toBe(200);
+      expect(retention.body.length).toBeGreaterThan(0);
+      expect(retention.body.every((row: any) => Number(row.visitors) === 1)).toBe(true);
+      expect(journeys.status).toBe(200);
+      expect(journeys.body.length).toBeGreaterThan(0);
+      expect(attribution.status).toBe(200);
+      expect(attribution.body.total.visitors).toBe(1);
+
+      const performanceChart = await admin.get(`${base}/performance/chart`, {
+        params: { ...audience, timezone: 'UTC', unit: 'day' },
+      });
+      const performanceMetrics = await admin.get(`${base}/performance/metrics`, {
+        params: { ...audience, type: 'path' },
+      });
+      const performanceStats = await admin.get(`${base}/performance/stats`, {
+        params: audience,
+      });
+      const unfilteredPerformance = await admin.get(`${base}/performance/stats`, {
+        params: range,
+      });
+      expect(performanceChart.status).toBe(200);
+      expect(performanceChart.body.chart).toEqual([]);
+      expect(performanceMetrics.status).toBe(200);
+      expect(performanceMetrics.body).toEqual([]);
+      expect(performanceStats.status).toBe(200);
+      expect(performanceStats.body.count).toBe(0);
+      expect(unfilteredPerformance.status).toBe(200);
+      expect(unfilteredPerformance.body.count).toBeGreaterThan(0);
+
+      const utm = await admin.get(`${base}/utm/metrics`, {
+        params: { ...audience, type: 'utm_source' },
+      });
+      const breakdown = await admin.get(`${base}/breakdown`, {
+        params: { ...audience, fields: JSON.stringify(['path']) },
+      });
+      expect(utm.status).toBe(200);
+      expect(
+        utm.body.reduce((sum: number, row: any) => sum + Number(row.views), 0),
+      ).toBeGreaterThan(0);
+      expect(breakdown.status).toBe(200);
+      expect(breakdown.body.length).toBeGreaterThan(0);
+      expect(breakdown.body.every((row: any) => Number(row.visitors) === 1)).toBe(true);
+
+      const goal = await admin.get(`${base}/goals/stats`, {
+        params: { ...audience, type: 'path', value: '/' },
+      });
+      const funnel = await admin.get(`${base}/funnels/stats`, {
+        params: {
+          ...audience,
+          window: 60,
+          steps: JSON.stringify([
+            { type: 'path', value: '/' },
+            { type: 'path', value: '/pricing' },
+          ]),
+        },
+      });
+      expect(goal.status).toBe(200);
+      expect(goal.body).toEqual({ num: 1, total: 1 });
+      expect(funnel.status).toBe(200);
+      expect(funnel.body[0].visitors).toBe(1);
+      expect(funnel.body[1].visitors).toBe(1);
+
+      const nestedRevenue: any = runBody(seed, 'revenue', { currency: seed.data.currency });
+      nestedRevenue.filters.epf0 = '2.gt.revenue.50';
+      nestedRevenue.filters.pf_country = 'eq.NZ';
+      nestedRevenue.filters.epf = 'ignored';
+      nestedRevenue.filters.spf = 'ignored';
+      const filteredRevenue = await admin.post('/api/reports/revenue', nestedRevenue);
+      expect(filteredRevenue.status).toBe(200);
+      expect(Number(filteredRevenue.body.total.sum)).toBe(387);
+
+      const nestedGoal: any = runBody(seed, 'goal', { type: 'path', value: '/' });
+      nestedGoal.filters.distinctId = seed.data.distinctIds[0];
+      nestedGoal.filters.spf0 = '2.eq.seats.5';
+      nestedGoal.filters.pf_country = 'eq.NZ';
+      nestedGoal.filters.epf = 'ignored';
+      nestedGoal.filters.spf = 'ignored';
+      const filteredGoal = await admin.post('/api/reports/goal', nestedGoal);
+      expect(filteredGoal.status).toBe(200);
+      expect(filteredGoal.body).toEqual({ num: 1, total: 1 });
+    } finally {
+      expect((await admin.del(`${base}/segments/${created.body.id}`)).status).toBe(200);
+    }
+  });
+
   test('POST /api/reports/attribution returns attribution by channel', async ({
     admin,
     share,

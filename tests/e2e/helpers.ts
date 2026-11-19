@@ -43,7 +43,11 @@ export async function loginPage(page: Page, request: APIRequestContext): Promise
   const auth = await loginViaApi(request);
 
   await page.addInitScript(token => {
-    window.localStorage.setItem('umami.auth', JSON.stringify(token));
+    // Seed this tab once; reinjecting on navigation silently signs the admin back in after logout.
+    if (!sessionStorage.getItem('maap-test-auth-seeded')) {
+      localStorage.setItem('umami.auth', JSON.stringify(token));
+      sessionStorage.setItem('maap-test-auth-seeded', '1');
+    }
   }, auth.token);
 
   return auth;

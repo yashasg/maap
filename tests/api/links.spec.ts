@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { expect, test } from './fixtures';
 import { ENTITY_TYPE, UNKNOWN_UUID } from './helpers/constants';
 import { dateRange } from './helpers/dates';
-import { deleteLink, uniqueName, uniqueSlug } from './helpers/entities';
+import { createLink, deleteLink, uniqueName, uniqueSlug } from './helpers/entities';
+import { PERSONAS } from './seed/dataset';
 
 test.describe('Links', () => {
   test.describe.configure({ mode: 'serial' });
@@ -41,7 +42,13 @@ test.describe('Links', () => {
     linkId = response.body.id;
   });
 
-  test('POST /api/links accepts a fixed id and a team', async ({ admin, seed }) => {
+  test('POST /api/links accepts a fixed id and a team', async ({
+    admin,
+    api,
+    seed,
+    user,
+    viewer,
+  }) => {
     const id = randomUUID();
     const response = await admin.post('/api/links', {
       id,
@@ -54,7 +61,73 @@ test.describe('Links', () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ id, teamId: seed.team.id, userId: null });
 
-    await deleteLink(admin, id);
+    try {
+      const sent = await api.post('/api/send', {
+        type: 'event',
+        payload: { link: id, url: '/', userAgent: PERSONAS[0].userAgent, ip: '10.0.9.4' },
+      });
+      const stats = await user.get(`/api/websites/${id}/stats`, { params: dateRange(seed) });
+      const denied = await viewer.get(`/api/websites/${id}/stats`, { params: dateRange(seed) });
+
+      expect(sent.status).toBe(200);
+      expect(stats.status).toBe(200);
+      expect(Number(stats.body.pageviews)).toBeGreaterThan(0);
+      expect(denied.status).toBe(401);
+    } finally {
+      await deleteLink(admin, id);
+    }
+  });
+
+  test('link owners can read collected analytics without gaining website mutations', async ({
+    api,
+    seed,
+    user,
+    viewer,
+  }) => {
+    const link = await createLink(user);
+
+    try {
+      const empty = await user.get(`/api/websites/${link.id}/daterange`);
+      expect(empty.status).toBe(200);
+      expect(empty.body).toEqual({ startDate: null, endDate: null });
+      const sent = await api.post('/api/send', {
+        type: 'event',
+        payload: {
+          link: link.id,
+          url: '/owner-analytics',
+          userAgent: PERSONAS[1].userAgent,
+          ip: '10.0.9.5',
+        },
+      });
+      const stats = await user.get(`/api/websites/${link.id}/stats`, {
+        params: dateRange(seed),
+      });
+      const pageviews = await user.get(`/api/websites/${link.id}/pageviews`, {
+        params: dateRange(seed, { unit: 'day', timezone: 'UTC' }),
+      });
+      const denied = await viewer.get(`/api/websites/${link.id}/stats`, {
+        params: dateRange(seed),
+      });
+      const websiteMutation = await user.post(`/api/websites/${link.id}`, {
+        name: 'not-a-website',
+      });
+
+      expect(sent.status).toBe(200);
+      const dates = await user.get(`/api/websites/${link.id}/daterange`);
+      expect(dates.status).toBe(200);
+      expect(dates.body.startDate).toEqual(expect.any(String));
+      expect(dates.body.endDate).toBe(dates.body.startDate);
+      expect(stats.status).toBe(200);
+      expect(Number(stats.body.pageviews)).toBeGreaterThan(0);
+      expect(pageviews.status).toBe(200);
+      expect(
+        pageviews.body.pageviews.reduce((total: number, point: any) => total + point.y, 0),
+      ).toBeGreaterThan(0);
+      expect(denied.status).toBe(401);
+      expect(websiteMutation.status).toBe(401);
+    } finally {
+      await deleteLink(user, link.id);
+    }
   });
 
   test('POST /api/links validates the body and requires permission', async ({

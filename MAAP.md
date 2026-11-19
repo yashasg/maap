@@ -35,6 +35,5 @@ Workload Identity Federation (`deploy/maap/deploy.sh`).
 
 ## Server Runtime (`MAAP_SERVER`)
 
-- **`MAAP_SERVER=rust` (default):** Runs the compiled Rust server (`rust/`, Axum + SQLx Postgres) as PID 1 on `:3000`. It natively serves `/v2/*`, `/api/send`, `/api/heartbeat`, and `/app-icon` (`x-maap-server: rust`), proxies Next.js UI routes to `127.0.0.1:3001`, and supports standalone zero-Node execution (`MAAP_NODE_FALLBACK=0`) for `/api/auth/login`, `/api/websites`, `/api/websites/:id/metrics`, `/api/websites/:id/stats`, `/api/me/api-keys`, and `/mcp`.
-- **`MAAP_SERVER=node`:** Falls back to the legacy Node.js `server.js` directly on `:3000`.
-- **Lightweight frontend delivery (next):** Replace the Next.js SSR UI with a static SPA so `MAAP_NODE_FALLBACK=0` becomes the permanent default.
+- **`MAAP_SERVER=rust` (default):** Rust serves the API and dashboard on `:3000` with `MAAP_NODE_FALLBACK=0`. Node runs the startup checks and migrations, then exits; no Next.js server stays running. Reports can combine a saved cohort with event and session property filters. The cohort's own date range selects visitors; the report's date range selects their activity.
+- **`MAAP_SERVER=node`:** Explicit rollback to the reference Next.js server. Use this for `CLICKHOUSE_URL`, `REDIS_URL`, or `CLOUD_MODE`; Rust refuses to start with those settings. `MAAP_NODE_FALLBACK=1` is not a rollback: it starts Next.js only for routes Rust does not handle. The release workflow tests both runtimes against disposable Postgres.

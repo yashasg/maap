@@ -169,21 +169,146 @@ test.describe('Segments', () => {
   });
 
   test('GET /api/websites/{websiteId}/stats accepts a segment filter', async ({ admin, seed }) => {
+    const segmentParameters = {
+      filters: [{ name: 'distinctId', operator: 'eq', value: seed.data.distinctIds[0] }],
+      match: 'all',
+    };
     const created = await admin.post(`/api/websites/${seed.website.id}/segments`, {
       type: 'segment',
       name: uniqueName('segment'),
-      parameters,
+      parameters: segmentParameters,
     });
 
     expect(created.status).toBe(200);
     seedSegmentId = created.body.id;
 
-    const stats = await admin.get(`/api/websites/${seed.website.id}/stats`, {
+    const path = `/api/websites/${seed.website.id}/stats`;
+    const unfiltered = await admin.get(path, {
+      params: dateRange(seed),
+    });
+    const stats = await admin.get(path, {
       params: dateRange(seed, { segment: seedSegmentId }),
     });
+    const direct = await admin.get(path, {
+      params: dateRange(seed, {
+        distinctId: seed.data.distinctIds[0],
+      }),
+    });
 
+    expect(unfiltered.status).toBe(200);
     expect(stats.status).toBe(200);
-    expect(stats.body).toMatchObject({ pageviews: expect.anything(), visitors: expect.anything() });
+    expect(direct.status).toBe(200);
+    expect(Number(stats.body.pageviews)).toBeGreaterThan(0);
+    expect(Number(stats.body.pageviews)).toBe(Number(direct.body.pageviews));
+    expect(Number(stats.body.pageviews)).toBeLessThan(Number(unfiltered.body.pageviews));
+  });
+
+  test('cohort membership and typed properties intersect on the same purchase', async ({
+    admin,
+    viewer,
+    seed,
+  }) => {
+    const base = `/api/websites/${seed.website.id}`;
+    const range = dateRange(seed);
+    const parameters = {
+      dateRange: `range:${range.startAt}:${range.endAt}`,
+      action: { type: 'event', value: 'purchase' },
+      filters: [{ name: 'distinctId', operator: 'eq', value: seed.data.distinctIds[0] }],
+      match: 'all',
+    };
+    const created = await admin.post(`${base}/segments`, {
+      type: 'cohort',
+      name: uniqueName('buyers'),
+      parameters,
+    });
+    expect(created.status).toBe(200);
+    const cohort = created.body.id;
+    try {
+      const denied = await viewer.get(`${base}/stats`, { params: { ...range, cohort } });
+      expect(denied.status).toBe(401);
+      const total = async (filters: Record<string, string>) => {
+        const response = await admin.get(`${base}/event-data-pivot/numeric-stats`, {
+          params: { ...range, eventName: 'purchase', propertyName: 'revenue', ...filters },
+        });
+        expect(response.status, response.text).toBe(200);
+        return Number(response.body.total);
+      };
+      expect(await total({ cohort })).toBe(3 * 49.5);
+      expect(await total({ cohort, epf0: '5.c.items.sku-1', spf0: '2.eq.seats.5' })).toBe(3 * 49.5);
+      const yesterday = new Date(seed.range.endAt - 86_400_000).toISOString().slice(0, 10);
+      expect(await total({ cohort, epf0: `4.eq.orderedAt.${yesterday}` })).toBe(49.5);
+      expect(await total({ cohort, epf0: '2.gt.revenue.50' })).toBe(0);
+      expect(await total({ cohort, spf0: '2.eq.seats.6' })).toBe(0);
+      const filters = { ...range, cohort, epf0: '1.eq.currency.USD', spf0: '2.eq.seats.5' };
+      for (const [endpoint, count] of [
+        ['events', 3],
+        ['sessions', 1],
+        ['event-data', 3],
+      ] as const) {
+        const page = await admin.get(`${base}/${endpoint}`, {
+          params: { ...filters, pageSize: 1 },
+        });
+        expect(page.status, page.text).toBe(200);
+        expect(page.body.count, endpoint).toBe(count);
+        expect(page.body.data).toHaveLength(1);
+      }
+      const heatmap = await admin.get(`${base}/heatmaps`, {
+        params: { ...range, mode: 'click', urlPath: '/', cohort },
+      });
+      expect(heatmap.status, heatmap.text).toBe(200);
+      expect(heatmap.body.points.length).toBeGreaterThan(0);
+      const excluded = await admin.get(`${base}/heatmaps`, {
+        params: { ...range, mode: 'click', urlPath: '/', cohort, spf0: '2.eq.seats.6' },
+      });
+      expect(excluded.status, excluded.text).toBe(200);
+      expect(excluded.body.pages).toEqual([]);
+      expect(excluded.body.points).toEqual([]);
+
+      const updated = await admin.post(`${base}/segments/${cohort}`, {
+        type: 'cohort',
+        name: uniqueName('past buyers'),
+        parameters: { ...parameters, dateRange: 'range:1000:2000' },
+      });
+      expect(updated.status).toBe(200);
+      expect(await total({ cohort })).toBe(0);
+    } finally {
+      expect((await admin.del(`${base}/segments/${cohort}`)).status).toBe(200);
+    }
+  });
+
+  test('saved session properties intersect with request properties instead of replacing them', async ({
+    admin,
+    seed,
+  }) => {
+    const base = `/api/websites/${seed.website.id}`;
+    const saved = await admin.post(`${base}/segments`, {
+      type: 'segment',
+      name: uniqueName('five seats'),
+      parameters: {
+        sessionPropertyFilters: [
+          { propertyName: 'seats', operator: 'eq', dataType: 2, value: '5' },
+        ],
+      },
+    });
+    expect(saved.status).toBe(200);
+    try {
+      for (const [plan, expected] of [
+        ['pro', 5],
+        ['free', 0],
+      ] as const) {
+        const stats = await admin.get(`${base}/session-data/numeric-stats`, {
+          params: dateRange(seed, {
+            propertyName: 'seats',
+            segment: saved.body.id,
+            spf0: `1.eq.plan.${plan}`,
+          }),
+        });
+        expect(stats.status, stats.text).toBe(200);
+        expect(Number(stats.body.total)).toBe(expected);
+      }
+    } finally {
+      expect((await admin.del(`${base}/segments/${saved.body.id}`)).status).toBe(200);
+    }
   });
 
   test('DELETE /api/websites/{websiteId}/segments/{segmentId} deletes a segment', async ({
