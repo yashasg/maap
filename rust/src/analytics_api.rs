@@ -91,10 +91,8 @@ pub fn register_analytics_routes(mut router: Router<AppState>) -> Router<AppStat
     for path in [
         "/api/websites/{website_id}/utm/metrics",
         "/api/websites/{website_id}/breakdown",
-        "/api/websites/{website_id}/funnels",
         "/api/websites/{website_id}/funnels/stats",
         "/api/websites/{website_id}/funnels/{report_id}/stats",
-        "/api/websites/{website_id}/goals",
         "/api/websites/{website_id}/goals/stats",
         "/api/websites/{website_id}/goals/{report_id}/stats",
         "/api/websites/{website_id}/retention",
@@ -120,6 +118,8 @@ pub fn register_analytics_routes(mut router: Router<AppState>) -> Router<AppStat
     }
 
     for path in [
+        "/api/websites/{website_id}/funnels",
+        "/api/websites/{website_id}/goals",
         "/api/websites/{website_id}/sessions/{session_id}/replays",
         "/api/websites/{website_id}/revenue/sessions",
         "/api/websites/{website_id}/replays",

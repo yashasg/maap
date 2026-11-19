@@ -372,22 +372,50 @@ test('every frontend query hook route in src/components/hooks/queries is registe
     registeredPatterns.add(match[1].replace(/\{[^}]+\}/g, ':param'));
   }
 
+  const analyticsSource = await readFile(
+    new URL('../../rust/src/analytics_api.rs', import.meta.url),
+    'utf8',
+  );
+  const emptyArrayBlock =
+    analyticsSource.match(
+      /for path in \[([^\]]+)\]\s*\{\s*router = router\.route\(path, get\(empty_array\)\)/,
+    )?.[1] || '';
+  const emptyArrayPatterns = new Set(
+    [...emptyArrayBlock.matchAll(/["'](\/api\/[^"']+)["']/g)].map(m =>
+      m[1].replace(/\{[^}]+\}/g, ':param'),
+    ),
+  );
+
   const hooksDir = new URL('../../src/components/hooks/queries/', import.meta.url);
   const hookFiles = (await readdir(hooksDir)).filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'));
   const missing = [];
+  const wrongPagedShape = [];
 
   for (const file of hookFiles) {
     const content = await readFile(new URL(file, hooksDir), 'utf8');
+    const isPaged = content.includes('usePagedQuery');
     for (const match of content.matchAll(/(?:[`'"])(\/(?:admin|auth|2fa|me|dashboard|websites|realtime|teams|users|links|pixels|boards|share)[^`'"]*?)(?:[`'"])/g)) {
       const raw = match[1];
+      if (raw === '/websites/${websiteId}/${feature}') {
+        for (const feat of ['funnels', 'goals']) {
+          const norm = `/api/websites/:param/${feat}`;
+          if (!registeredPatterns.has(norm)) missing.push(`${file}: ${norm}`);
+          if (isPaged && emptyArrayPatterns.has(norm)) wrongPagedShape.push(`${file}: ${norm}`);
+        }
+        continue;
+      }
       if (raw.includes('${feature}') || raw.includes('${path}') || raw.includes('${scope}')) continue;
       const normalized = `/api${raw}`.replace(/\$\{[^}]+\}/g, ':param').replace(/\/+$/, '');
       if (!registeredPatterns.has(normalized)) {
         missing.push(`${file}: ${raw} (expected ${normalized})`);
       }
+      if (isPaged && emptyArrayPatterns.has(normalized)) {
+        wrongPagedShape.push(`${file}: ${normalized} uses usePagedQuery but is mapped to empty_array`);
+      }
     }
   }
 
   assert.deepEqual(missing, []);
+  assert.deepEqual(wrongPagedShape, []);
 });
 
