@@ -110,6 +110,10 @@ export async function getLocation(ip: string = '', headers: Headers, skipHeaders
   }
 
   // Database lookup
+  if (process.env.DISABLE_GEOIP) {
+    return null;
+  }
+
   if (!globalThis[MAXMIND]) {
     const dir = path.join(process.cwd(), 'geo');
 

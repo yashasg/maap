@@ -46,6 +46,12 @@ const base = {
 };
 const screens = ['Home', 'Catalog', 'Detail'];
 const navigation = await request('/v2/', {
+  headers: {
+    'cf-connecting-ip': '8.8.8.8',
+    'cf-ipcountry': 'US',
+    'cf-region-code': 'WA',
+    'cf-ipcity': 'Seattle',
+  },
   body: screens.map(screen => ({
     ...base,
     type: 'TelemetryDeck.Navigation.pathChanged',
@@ -69,6 +75,8 @@ async function metric(website, type, from = startAt, to = endAt, extra = {}) {
 }
 assert.deepEqual(await metric(appID, 'path'), screens.map(screen => `/${screen}`).sort());
 assert.deepEqual(await metric(appID, 'browser'), ['App 1.2.3']);
+assert.deepEqual(await metric(appID, 'country'), ['US']);
+assert.deepEqual(await metric(appID, 'city'), ['Seattle']);
 assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, endAt), ['DemoEvent']);
 assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, historicalAt + 1000, { tag: 'test' }), ['TestOnly']);
 const filter = new URLSearchParams({ startAt, endAt, browser: 'App 1.2.3' });
