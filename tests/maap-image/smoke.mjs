@@ -119,4 +119,21 @@ const reply = rpc.headers.get('content-type')?.includes('text/event-stream')
       .map(line => JSON.parse(line.slice(5))).find(message => message.id === 1)
   : await rpc.json();
 assert.equal(reply?.result?.structuredContent?.current?.pageviews, 3);
-console.log('Verified both ingestion paths, pageviews, Browser, test isolation and MCP stats.');
+
+// Verify static app routes (/login, /websites), /_next/static chunks, and /app-icon -> /images/os/ios.png
+// are served directly by the Rust server (including when Node is completely severed).
+for (const appRoute of ['/login', '/websites']) {
+  const page = await request(appRoute);
+  assert.equal(page.headers.get('x-maap-server'), 'rust', `${appRoute} served by Rust`);
+  const html = await page.text();
+  assert.match(html, /Maap/);
+  const chunkMatch = html.match(/\/_next\/static\/[^"'\s>]+\.js/);
+  assert.ok(chunkMatch, `${appRoute} references a /_next/static JS bundle`);
+  const chunk = await request(chunkMatch[0]);
+  assert.equal(chunk.headers.get('x-maap-server'), 'rust');
+  assert.match(chunk.headers.get('cache-control') || '', /immutable/);
+}
+const fallbackIcon = await request('/app-icon?url=https://apps.apple.com/app/id999999999');
+assert.equal(fallbackIcon.headers.get('x-maap-server'), 'rust');
+assert.equal(fallbackIcon.headers.get('content-type'), 'image/png');
+console.log('Verified both ingestion paths, pageviews, Browser, test isolation, static app routes and MCP stats.');

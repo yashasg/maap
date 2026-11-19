@@ -25,6 +25,7 @@ use sqlx::{postgres::PgPoolOptions, PgPool, Row};
 use std::{
     collections::{HashMap, HashSet},
     env,
+    path::{Path as FsPath, PathBuf},
     str::FromStr,
     sync::{Arc, OnceLock},
     time::{Instant, SystemTime, UNIX_EPOCH},
@@ -45,6 +46,7 @@ pub struct AppState {
     pub http: reqwest::Client,
     pub td_options: TdOptions,
     pub node_upstream: Option<String>,
+    pub static_root: PathBuf,
     pub icon_cache: Arc<RwLock<HashMap<String, CachedIcon>>>,
 }
 
@@ -1741,7 +1743,142 @@ async fn convert_reqwest_response(resp: reqwest::Response) -> Response {
     out
 }
 
+fn content_type_for_path(path: &FsPath) -> &'static str {
+    match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
+        "html" => "text/html; charset=utf-8",
+        "js" | "mjs" => "application/javascript; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "json" | "webmanifest" => "application/json; charset=utf-8",
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "ico" => "image/x-icon",
+        "woff2" => "font/woff2",
+        "woff" => "font/woff",
+        "ttf" => "font/ttf",
+        "txt" | "map" => "text/plain; charset=utf-8",
+        _ => "application/octet-stream",
+    }
+}
+
+fn sanitize_rel_path(raw: &str) -> Option<String> {
+    let trimmed = raw.trim_matches('/');
+    if trimmed.contains('\\') {
+        return None;
+    }
+    let mut parts = Vec::new();
+    for seg in trimmed.split('/') {
+        if seg.is_empty() || seg == "." {
+            continue;
+        }
+        if seg == ".." {
+            return None;
+        }
+        parts.push(seg);
+    }
+    Some(parts.join("/"))
+}
+
+async fn serve_file_bytes(file_path: &FsPath, cache_control: Option<&'static str>) -> Option<Response> {
+    let meta = tokio::fs::metadata(file_path).await.ok()?;
+    if !meta.is_file() {
+        return None;
+    }
+    let bytes = tokio::fs::read(file_path).await.ok()?;
+    let mut res = Response::new(Body::from(bytes));
+    res.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static(content_type_for_path(file_path)),
+    );
+    if let Some(cc) = cache_control {
+        res.headers_mut()
+            .insert(header::CACHE_CONTROL, HeaderValue::from_static(cc));
+    }
+    Some(with_rust_header(res))
+}
+
+async fn try_serve_static_or_spa(
+    static_root: &FsPath,
+    method: &axum::http::Method,
+    uri_path: &str,
+    has_rsc_header: bool,
+    severed: bool,
+) -> Option<Response> {
+    if *method != axum::http::Method::GET && *method != axum::http::Method::HEAD {
+        return None;
+    }
+    if uri_path.starts_with("/api/")
+        || uri_path == "/v2"
+        || uri_path.starts_with("/v2/")
+        || uri_path == "/mcp"
+        || uri_path == "/app-icon"
+    {
+        return None;
+    }
+
+    if let Some(rest) = uri_path.strip_prefix("/_next/static/") {
+        let rel = sanitize_rel_path(rest)?;
+        if rel.is_empty() {
+            return None;
+        }
+        let target = static_root.join(".next/static").join(rel);
+        return serve_file_bytes(&target, Some("public, max-age=31536000, immutable")).await;
+    }
+
+    let rel = sanitize_rel_path(uri_path)?;
+    if !rel.is_empty() {
+        let pub_file = static_root.join("public").join(&rel);
+        let cache = if rel == "script.js" || rel == "recorder.js" {
+            Some("public, max-age=86400, must-revalidate")
+        } else {
+            None
+        };
+        if let Some(res) = serve_file_bytes(&pub_file, cache).await {
+            return Some(res);
+        }
+    }
+
+    // If Next.js RSC client flight data is requested and Node is still attached, let Node answer RSC.
+    if !severed && has_rsc_header {
+        return None;
+    }
+
+    let app_dir = static_root.join(".next/server/app");
+    let mut candidates = Vec::new();
+    if rel.is_empty() {
+        candidates.push(app_dir.join("index.html"));
+    } else {
+        candidates.push(app_dir.join(format!("{rel}.html")));
+        candidates.push(app_dir.join(&rel).join("index.html"));
+        candidates.push(app_dir.join("(main)").join(format!("{rel}.html")));
+        candidates.push(app_dir.join("(main)").join(&rel).join("index.html"));
+    }
+
+    if severed {
+        candidates.push(app_dir.join("(main)/websites.html"));
+        candidates.push(app_dir.join("websites.html"));
+        candidates.push(app_dir.join("index.html"));
+    }
+
+    for candidate in candidates {
+        if let Some(res) = serve_file_bytes(&candidate, Some("no-cache")).await {
+            return Some(res);
+        }
+    }
+
+    None
+}
+
 async fn fallback_proxy(State(state): State<AppState>, req: Request) -> Response {
+    let severed = state.node_upstream.is_none();
+    let req_method = req.method().clone();
+    let req_path = req.uri().path().to_string();
+    let has_rsc = req.headers().contains_key("rsc");
+    if let Some(static_res) =
+        try_serve_static_or_spa(&state.static_root, &req_method, &req_path, has_rsc, severed).await
+    {
+        return static_res;
+    }
     let Some(upstream) = &state.node_upstream else {
         return with_rust_header(StatusCode::NOT_FOUND.into_response());
     };
@@ -1791,6 +1928,7 @@ pub fn build_router(state: AppState) -> Router {
             .route("/api/websites/{website_id}/stats", get(handle_website_stats))
             .route("/api/me/api-keys", post(handle_create_api_key))
             .route("/mcp", post(handle_mcp))
+            .fallback(any(fallback_proxy))
             .with_state(state)
     } else {
         router.fallback(any(fallback_proxy)).with_state(state)
@@ -1838,11 +1976,16 @@ async fn main() {
         .build()
         .expect("http client");
 
+    let static_root = env::var("MAAP_STATIC_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."));
+
     let state = AppState {
         db,
         http,
         td_options,
         node_upstream,
+        static_root,
         icon_cache: Arc::new(RwLock::new(HashMap::new())),
     };
 
@@ -2054,6 +2197,7 @@ mod tests {
             http: reqwest::Client::new(),
             td_options: TdOptions::default(),
             node_upstream: Some(format!("http://{up_addr}")),
+            static_root: PathBuf::from("."),
             icon_cache: Arc::new(RwLock::new(HashMap::new())),
         };
         let proxy_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -2087,5 +2231,110 @@ mod tests {
         assert_eq!(login.status(), StatusCode::OK);
         let payload: Value = login.json().await.unwrap();
         assert_eq!(payload.get("token").and_then(|v| v.as_str()), Some("tok-123"));
+    }
+
+    #[tokio::test]
+    async fn serves_static_app_routes_and_assets_when_node_is_severed() {
+        let dir = std::env::temp_dir().join(format!("maap-static-test-{}", Uuid::new_v4()));
+        tokio::fs::create_dir_all(dir.join(".next/server/app/(main)"))
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(dir.join(".next/static/chunks"))
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(dir.join("public/images/os"))
+            .await
+            .unwrap();
+
+        tokio::fs::write(
+            dir.join(".next/server/app/login.html"),
+            "<!doctype html><html><head><title>Login | Maap</title></head><body><script src=\"/_next/static/chunks/app.js\"></script></body></html>",
+        )
+        .await
+        .unwrap();
+        tokio::fs::write(
+            dir.join(".next/server/app/(main)/websites.html"),
+            "<!doctype html><html><head><title>Websites | Maap</title></head><body>Maap SPA</body></html>",
+        )
+        .await
+        .unwrap();
+        tokio::fs::write(
+            dir.join(".next/static/chunks/app.js"),
+            "console.log('maap-static');",
+        )
+        .await
+        .unwrap();
+        tokio::fs::write(dir.join("public/images/os/ios.png"), b"\x89PNG\r\n\x1a\n")
+            .await
+            .unwrap();
+
+        let state = AppState {
+            db: None,
+            http: reqwest::Client::new(),
+            td_options: TdOptions::default(),
+            node_upstream: None,
+            static_root: dir.clone(),
+            icon_cache: Arc::new(RwLock::new(HashMap::new())),
+        };
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, build_router(state)).await.unwrap();
+        });
+
+        let client = reqwest::Client::new();
+
+        // 1. Pre-rendered /login route served directly by Rust with Node severed
+        let login_res = client
+            .get(format!("http://{addr}/login"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(login_res.status(), StatusCode::OK);
+        assert_eq!(
+            login_res.headers().get("x-maap-server").unwrap(),
+            "rust"
+        );
+        let login_html = login_res.text().await.unwrap();
+        assert!(login_html.contains("Login | Maap"));
+
+        // 2. Route-group /(main)/websites route & dynamic SPA fallback /websites/<uuid>
+        for route in ["/websites", "/websites/cf80c54b-e250-4d04-ba0f-568c176ead2b"] {
+            let res = client
+                .get(format!("http://{addr}{route}"))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+            assert_eq!(res.headers().get("x-maap-server").unwrap(), "rust");
+            assert!(res.text().await.unwrap().contains("Websites | Maap"));
+        }
+
+        // 3. Immutable /_next/static chunk served by Rust
+        let chunk_res = client
+            .get(format!("http://{addr}/_next/static/chunks/app.js"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(chunk_res.status(), StatusCode::OK);
+        assert_eq!(chunk_res.headers().get("x-maap-server").unwrap(), "rust");
+        assert_eq!(
+            chunk_res.headers().get(header::CACHE_CONTROL).unwrap(),
+            "public, max-age=31536000, immutable"
+        );
+
+        // 4. /app-icon 302 fallback followed all the way to /images/os/ios.png served by Rust
+        let icon_res = client
+            .get(format!(
+                "http://{addr}/app-icon?url=https://apps.apple.com/app/id999999999"
+            ))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(icon_res.status(), StatusCode::OK);
+        assert_eq!(icon_res.headers().get("x-maap-server").unwrap(), "rust");
+        assert_eq!(icon_res.bytes().await.unwrap().as_ref(), b"\x89PNG\r\n\x1a\n");
+
+        let _ = tokio::fs::remove_dir_all(dir).await;
     }
 }
