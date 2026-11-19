@@ -4,6 +4,10 @@
 
 ## Run a release
 
+**Visitor location through the tunnel.** On the Cloudflare zone that serves the SDK's public hostname, open **Rules → Settings → Managed Transforms** and enable [Add visitor location headers](https://developers.cloudflare.com/rules/transform/managed-transforms/reference/#add-visitor-location-headers). Cloudflare adds `CF-IPCountry`, `CF-Region-Code` and `CF-IPCity` (when known) to the origin request before `cloudflared` forwards it to Maap. No connector restart, app change or MaxMind database is required. **Network → IP Geolocation** alone supplies only the country.
+
+Verify with a fresh SDK session sent to the public hostname. Open the session in Maap and check its country, region and city. These are estimates for the visitor's public IP (possibly a VPN exit), not the VM's location or device GPS. Requests made directly to the origin bypass Cloudflare. Changing the zone does not retroactively locate old visits.
+
 Default-branch pushes by the repository owner automatically publish `ghcr.io/yashasg/umami-td:<git-sha>` and invoke `/opt/maap/deploy.sh <git-sha>` on `maap-vm` (`us-west1-b`) over Google Cloud IAP using Workload Identity Federation (OIDC). `deploy.sh` backs up a running database to `/var/backups/maap`, atomically updates `UMAMI_IMAGE_TAG` in `/opt/maap/.env`, pulls and restarts `db` and `umami`, verifies `/api/heartbeat`, and starts `cloudflared` once `TUNNEL_TOKEN` is configured.
 
 For manual setup or inspection on the host:
