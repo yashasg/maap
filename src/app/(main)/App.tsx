@@ -17,6 +17,7 @@ import { PasswordChangeRequiredModal } from '@/components/modals/PasswordChangeR
 import { TwoFactorSetupModal } from '@/components/modals/TwoFactorSetupModal';
 import { LAST_TEAM_CONFIG } from '@/lib/constants';
 import { removeItem, setItem } from '@/lib/storage';
+import { SpaRouteView } from './SpaRouteView';
 import { UpdateNotice } from './UpdateNotice';
 
 export function App({ children }) {
@@ -118,7 +119,7 @@ export function App({ children }) {
           aria-hidden={accessBlocked || undefined}
           style={accessBlocked ? { pointerEvents: 'none' } : undefined}
         >
-          {children}
+          <SpaRouteView pathname={pathname}>{children}</SpaRouteView>
         </Column>
       </Column>
       {needsTwoFactorSetup && <TwoFactorSetupModal required={true} />}

@@ -16,3 +16,5 @@ playwright.api.config.ts
 docker-compose.test.yml
 playwright-report
 test-results
+rust/target
+

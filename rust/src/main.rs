@@ -34,6 +34,9 @@ use tokio::sync::RwLock;
 use url::Url;
 use uuid::Uuid;
 
+mod analytics_api;
+mod dashboard_api;
+
 type Aes256Gcm16 = AesGcm<Aes256, U16>;
 
 const HISTORICAL_CUTOFF_MS: i64 = 5 * 60 * 1000;
@@ -1918,21 +1921,14 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v2", post(handle_v2))
         .route("/v2/", post(handle_v2))
         .route("/v2/namespace/{*namespace}", post(handle_v2))
-        .route("/app-icon", get(handle_app_icon));
-
-    if state.node_upstream.is_none() {
-        router
-            .route("/api/auth/login", post(handle_login))
-            .route("/api/websites", post(handle_create_website))
-            .route("/api/websites/{website_id}/metrics", get(handle_website_metrics))
-            .route("/api/websites/{website_id}/stats", get(handle_website_stats))
-            .route("/api/me/api-keys", post(handle_create_api_key))
-            .route("/mcp", post(handle_mcp))
-            .fallback(any(fallback_proxy))
-            .with_state(state)
-    } else {
-        router.fallback(any(fallback_proxy)).with_state(state)
-    }
+        .route("/app-icon", get(handle_app_icon))
+        .route("/api/auth/login", post(handle_login))
+        .route("/api/websites/{website_id}/metrics", get(handle_website_metrics))
+        .route("/api/websites/{website_id}/stats", get(handle_website_stats))
+        .route("/mcp", post(handle_mcp));
+    let router = dashboard_api::register_dashboard_routes(router);
+    let router = analytics_api::register_analytics_routes(router);
+    router.fallback(any(fallback_proxy)).with_state(state)
 }
 
 #[tokio::main]
@@ -1962,11 +1958,11 @@ async fn main() {
         allowed_keys,
     };
 
-    let node_upstream = if env::var("MAAP_NODE_FALLBACK").ok().as_deref() == Some("0") {
-        None
-    } else {
+    let node_upstream = if env::var("MAAP_NODE_FALLBACK").ok().as_deref() == Some("1") {
         let port = env::var("MAAP_NODE_PORT").unwrap_or_else(|_| "3001".to_string());
         Some(format!("http://127.0.0.1:{port}"))
+    } else {
+        None
     };
 
     let http = reqwest::Client::builder()
@@ -2181,7 +2177,7 @@ mod tests {
                 get(|| async { Json(json!({ "ok": true })) }),
             )
             .route(
-                "/api/auth/login",
+                "/api/custom-fallback-test",
                 post(|Json(body): Json<Value>| async move {
                     Json(json!({ "token": "tok-123", "echo": body })).into_response()
                 }),
@@ -2223,7 +2219,7 @@ mod tests {
         );
 
         let login = client
-            .post(format!("http://{proxy_addr}/api/auth/login"))
+            .post(format!("http://{proxy_addr}/api/custom-fallback-test"))
             .json(&json!({ "username": "admin", "password": "umami" }))
             .send()
             .await

@@ -122,7 +122,7 @@ assert.equal(reply?.result?.structuredContent?.current?.pageviews, 3);
 
 // Verify static app routes (/login, /websites), /_next/static chunks, and /app-icon -> /images/os/ios.png
 // are served directly by the Rust server (including when Node is completely severed).
-for (const appRoute of ['/login', '/websites']) {
+for (const appRoute of ['/login', '/websites', `/websites/${appID}`]) {
   const page = await request(appRoute);
   assert.equal(page.headers.get('x-maap-server'), 'rust', `${appRoute} served by Rust`);
   const html = await page.text();
@@ -132,6 +132,23 @@ for (const appRoute of ['/login', '/websites']) {
   const chunk = await request(chunkMatch[0]);
   assert.equal(chunk.headers.get('x-maap-server'), 'rust');
   assert.match(chunk.headers.get('cache-control') || '', /immutable/);
+}
+for (const apiPath of [
+  '/api/auth/verify',
+  '/api/2fa/status',
+  '/api/me/websites',
+  `/api/websites/${appID}`,
+  `/api/websites/charts?ids=${appID}&startAt=${startAt}&endAt=${endAt}`,
+  `/api/websites/${appID}/pageviews?startAt=${startAt}&endAt=${endAt}`,
+  `/api/websites/${appID}/active`,
+  `/api/realtime/${appID}`,
+  `/api/websites/${appID}/events?startAt=${startAt}&endAt=${endAt}`,
+  `/api/websites/${appID}/sessions?startAt=${startAt}&endAt=${endAt}`,
+  `/api/websites/${appID}/sessions/stats?startAt=${startAt}&endAt=${endAt}`,
+  `/api/websites/${appID}/daterange`,
+]) {
+  const res = await request(apiPath, { token });
+  assert.equal(res.headers.get('x-maap-server'), 'rust', `${apiPath} served by Rust`);
 }
 const fallbackIcon = await request('/app-icon?url=https://apps.apple.com/app/id999999999');
 assert.equal(fallbackIcon.headers.get('x-maap-server'), 'rust');
