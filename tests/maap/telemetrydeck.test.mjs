@@ -4,7 +4,7 @@ import { chmod, copyFile, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { resolveAppIconUrl } from '../../src/app/app-icon/route.ts';
+import { GET as getAppIcon, resolveAppIconUrl } from '../../src/app/app-icon/route.ts';
 import { DOMAIN_REGEX } from '../../src/lib/constants.ts';
 import { ingestBatch, mapSignal } from '../../src/lib/telemetrydeck.ts';
 
@@ -299,4 +299,63 @@ test('accepts App Store and Google Play URLs in DOMAIN_REGEX and resolves store 
       ),
   );
   assert.equal(playIcon, 'https://play-lh.googleusercontent.com/app-icon');
+});
+
+test('GET /app-icon caches resolved store artwork, sets 24h/7d Cache-Control, and falls back to OS icons', async t => {
+  assert.equal((await getAppIcon(new Request('https://metrics.example/app-icon'))).status, 400);
+
+  let upstreamCalls = 0;
+  t.mock.method(globalThis, 'fetch', async url => {
+    upstreamCalls++;
+    const href = String(url);
+    if (href.includes('itunes.apple.com/lookup?id=6741827585')) {
+      return Response.json({
+        results: [{ artworkUrl100: 'https://is1-ssl.mzstatic.com/image/thumb/xpenshare.png' }],
+      });
+    }
+    if (href === 'https://is1-ssl.mzstatic.com/image/thumb/xpenshare.png') {
+      return new Response(new Uint8Array([137, 80, 78, 71]), {
+        headers: { 'content-type': 'image/png' },
+      });
+    }
+    return new Response(null, { status: 404 });
+  });
+
+  const storeUrl = 'https://apps.apple.com/us/app/xpenshare/id6741827585';
+  const reqUrl = `https://metrics.example/app-icon?url=${encodeURIComponent(storeUrl)}`;
+  const first = await getAppIcon(new Request(reqUrl));
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get('content-type'), 'image/png');
+  assert.equal(first.headers.get('cache-control'), 'public, max-age=86400, s-maxage=604800');
+  assert.deepEqual(new Uint8Array(await first.arrayBuffer()), new Uint8Array([137, 80, 78, 71]));
+  assert.equal(upstreamCalls, 2);
+
+  // Second request for the same store URL is served from in-memory cache with 0 upstream calls.
+  const second = await getAppIcon(new Request(reqUrl));
+  assert.equal(second.status, 200);
+  assert.equal(upstreamCalls, 2);
+
+  // Unlisted/offline store URLs redirect (302) to the matching platform icon.
+  const iosFallback = await getAppIcon(
+    new Request('https://metrics.example/app-icon?url=https://apps.apple.com/app/id999999999'),
+  );
+  assert.equal(iosFallback.status, 302);
+  assert.equal(iosFallback.headers.get('location'), 'https://metrics.example/images/os/ios.png');
+
+  const macFallback = await getAppIcon(
+    new Request('https://metrics.example/app-icon?url=https://apps.apple.com/app/id999999999?mt=12'),
+  );
+  assert.equal(macFallback.status, 302);
+  assert.equal(macFallback.headers.get('location'), 'https://metrics.example/images/os/mac-os.png');
+
+  const androidFallback = await getAppIcon(
+    new Request(
+      'https://metrics.example/app-icon?url=https://play.google.com/store/apps/details?id=com.missing.app',
+    ),
+  );
+  assert.equal(androidFallback.status, 302);
+  assert.equal(
+    androidFallback.headers.get('location'),
+    'https://metrics.example/images/os/android-os.png',
+  );
 });

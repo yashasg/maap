@@ -24,7 +24,14 @@ const { token } = await (
 ).json();
 assert.ok(token);
 const appID = randomUUID();
-await request('/api/websites', { token, body: { id: appID, name: 'Maap CI', domain: 'app.ios' } });
+await request('/api/websites', {
+  token,
+  body: {
+    id: appID,
+    name: 'Maap CI',
+    domain: 'https://apps.apple.com/us/app/xpenshare/id6741827585',
+  },
+});
 
 const startAt = Date.now() - 60000;
 const historicalAt = startAt - 10 * 60000;
