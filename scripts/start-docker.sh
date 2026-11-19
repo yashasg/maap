@@ -22,7 +22,7 @@ if [ "${MAAP_SERVER:-rust}" = "node" ]; then
   exec node server.js
 fi
 
-if [ "${MAAP_NODE_FALLBACK:-1}" != "0" ]; then
+if [ "${MAAP_NODE_FALLBACK:-0}" = "1" ]; then
   HOSTNAME=127.0.0.1 PORT="${MAAP_NODE_PORT:-3001}" node server.js &
 fi
 

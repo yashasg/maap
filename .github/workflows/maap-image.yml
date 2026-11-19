@@ -56,7 +56,6 @@ jobs:
           docker compose pull db
           docker compose up --wait --wait-timeout 240 --pull never db umami
           docker compose exec -T umami node --input-type=module < tests/maap-image/smoke.mjs
-          docker compose exec -T umami sh -c 'MAAP_NODE_FALLBACK=0 PORT=3002 ./maap-server & pid=$!; trap "kill $pid 2>/dev/null || true" EXIT; sleep 1; MAAP_SMOKE_ORIGIN=http://127.0.0.1:3002 node --input-type=module' < tests/maap-image/smoke.mjs
           export BACKUP_DIR="$(mktemp -d "$RUNNER_TEMP/maap-backup.XXXXXXXX")"
           bash deploy/maap/backup.sh
           bash deploy/maap/restore-drill.sh "$BACKUP_DIR"/maap-*.dump

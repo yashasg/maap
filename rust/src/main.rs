@@ -34,6 +34,9 @@ use tokio::sync::RwLock;
 use url::Url;
 use uuid::Uuid;
 
+mod analytics_api;
+mod dashboard_api;
+
 type Aes256Gcm16 = AesGcm<Aes256, U16>;
 
 const HISTORICAL_CUTOFF_MS: i64 = 5 * 60 * 1000;
@@ -932,10 +935,47 @@ async fn persist_send_envelope(
     }))
 }
 
-fn with_rust_header(mut res: Response) -> Response {
+pub fn with_rust_header(mut res: Response) -> Response {
     res.headers_mut()
         .insert("x-maap-server", HeaderValue::from_static("rust"));
     res
+}
+
+pub fn json_response(value: Value) -> Response {
+    with_rust_header(Json(value).into_response())
+}
+
+pub fn status_response(status: StatusCode) -> Response {
+    with_rust_header(status.into_response())
+}
+
+pub fn error_response(status: StatusCode, message: impl Into<String>) -> Response {
+    with_rust_header(
+        (
+            status,
+            Json(json!({
+                "error": {
+                    "message": message.into(),
+                    "status": status.as_u16()
+                }
+            })),
+        )
+            .into_response(),
+    )
+}
+
+pub fn page_params(params: &HashMap<String, String>) -> (i64, i64, i64) {
+    let page = params
+        .get("page")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(1)
+        .max(1);
+    let page_size = params
+        .get("pageSize")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(20)
+        .clamp(1, 500);
+    (page, page_size, (page - 1) * page_size)
 }
 
 async fn heartbeat(State(state): State<AppState>) -> Response {
@@ -1918,21 +1958,14 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v2", post(handle_v2))
         .route("/v2/", post(handle_v2))
         .route("/v2/namespace/{*namespace}", post(handle_v2))
-        .route("/app-icon", get(handle_app_icon));
-
-    if state.node_upstream.is_none() {
-        router
-            .route("/api/auth/login", post(handle_login))
-            .route("/api/websites", post(handle_create_website))
-            .route("/api/websites/{website_id}/metrics", get(handle_website_metrics))
-            .route("/api/websites/{website_id}/stats", get(handle_website_stats))
-            .route("/api/me/api-keys", post(handle_create_api_key))
-            .route("/mcp", post(handle_mcp))
-            .fallback(any(fallback_proxy))
-            .with_state(state)
-    } else {
-        router.fallback(any(fallback_proxy)).with_state(state)
-    }
+        .route("/app-icon", get(handle_app_icon))
+        .route("/api/auth/login", post(handle_login))
+        .route("/api/websites/{website_id}/metrics", get(handle_website_metrics))
+        .route("/api/websites/{website_id}/stats", get(handle_website_stats))
+        .route("/mcp", post(handle_mcp));
+    let router = dashboard_api::register_dashboard_routes(router);
+    let router = analytics_api::register_analytics_routes(router);
+    router.fallback(any(fallback_proxy)).with_state(state)
 }
 
 #[tokio::main]
@@ -1962,11 +1995,11 @@ async fn main() {
         allowed_keys,
     };
 
-    let node_upstream = if env::var("MAAP_NODE_FALLBACK").ok().as_deref() == Some("0") {
-        None
-    } else {
+    let node_upstream = if env::var("MAAP_NODE_FALLBACK").ok().as_deref() == Some("1") {
         let port = env::var("MAAP_NODE_PORT").unwrap_or_else(|_| "3001".to_string());
         Some(format!("http://127.0.0.1:{port}"))
+    } else {
+        None
     };
 
     let http = reqwest::Client::builder()
@@ -2181,7 +2214,7 @@ mod tests {
                 get(|| async { Json(json!({ "ok": true })) }),
             )
             .route(
-                "/api/auth/login",
+                "/api/custom-fallback-test",
                 post(|Json(body): Json<Value>| async move {
                     Json(json!({ "token": "tok-123", "echo": body })).into_response()
                 }),
@@ -2223,7 +2256,7 @@ mod tests {
         );
 
         let login = client
-            .post(format!("http://{proxy_addr}/api/auth/login"))
+            .post(format!("http://{proxy_addr}/api/custom-fallback-test"))
             .json(&json!({ "username": "admin", "password": "umami" }))
             .send()
             .await
