@@ -12,8 +12,8 @@ env:
 
 jobs:
   build:
-    if: github.repository == 'umami-software/umami'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    if: github.actor == github.repository_owner && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -36,4 +36,4 @@ jobs:
       - run: pnpm build:packages
       - run: pnpm test
       - run: pnpm test:packages
-      - run: pnpm build
+      - run: cargo test --manifest-path rust/Cargo.toml --locked

@@ -77,10 +77,18 @@ pub fn register_dashboard_routes(router: Router<AppState>) -> Router<AppState> {
         )
         .route("/api/links", get(handle_empty_page))
         .route("/api/links/charts", get(handle_empty_charts))
+        .route("/api/links/{link_id}", get(handle_empty_object))
+        .route("/api/links/{link_id}/shares", get(handle_empty_page))
         .route("/api/pixels", get(handle_empty_page))
         .route("/api/pixels/charts", get(handle_empty_charts))
+        .route("/api/pixels/{pixel_id}", get(handle_empty_object))
+        .route("/api/pixels/{pixel_id}/shares", get(handle_empty_page))
         .route("/api/boards", get(handle_empty_page))
+        .route("/api/boards/{board_id}", get(handle_empty_object))
+        .route("/api/boards/{board_id}/shares", get(handle_empty_page))
         .route("/api/teams", get(handle_empty_page))
+        .route("/api/teams/{team_id}", get(handle_empty_object))
+        .route("/api/share/{slug}", get(handle_empty_object))
         .route("/api/admin/users", get(handle_admin_users))
         .route(
             "/api/admin/users/{user_id}/2fa",
@@ -544,6 +552,17 @@ async fn handle_empty_charts(State(state): State<AppState>, headers: HeaderMap) 
         return response;
     }
     json_response(json!({ "data": {} }))
+}
+
+async fn handle_empty_object(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    let pool = match database(&state) {
+        Ok(pool) => pool,
+        Err(response) => return response,
+    };
+    if let Err(response) = authenticate(pool, &headers, "/api").await {
+        return response;
+    }
+    json_response(json!({}))
 }
 
 async fn handle_api_keys(State(state): State<AppState>, headers: HeaderMap) -> Response {

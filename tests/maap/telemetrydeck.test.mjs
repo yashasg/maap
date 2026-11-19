@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmod, copyFile, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -359,3 +359,35 @@ test('GET /app-icon caches resolved store artwork, sets 24h/7d Cache-Control, an
     'https://metrics.example/images/os/android-os.png',
   );
 });
+
+test('every frontend query hook route in src/components/hooks/queries is registered in Rust router', async () => {
+  const rustDir = new URL('../../rust/src/', import.meta.url);
+  const rustFiles = (await readdir(rustDir)).filter(f => f.endsWith('.rs'));
+  const rustSource = (
+    await Promise.all(rustFiles.map(f => readFile(new URL(f, rustDir), 'utf8')))
+  ).join('\n');
+
+  const registeredPatterns = new Set();
+  for (const match of rustSource.matchAll(/["'](\/api\/[^"']+)["']/g)) {
+    registeredPatterns.add(match[1].replace(/\{[^}]+\}/g, ':param'));
+  }
+
+  const hooksDir = new URL('../../src/components/hooks/queries/', import.meta.url);
+  const hookFiles = (await readdir(hooksDir)).filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'));
+  const missing = [];
+
+  for (const file of hookFiles) {
+    const content = await readFile(new URL(file, hooksDir), 'utf8');
+    for (const match of content.matchAll(/(?:[`'"])(\/(?:admin|auth|2fa|me|dashboard|websites|realtime|teams|users|links|pixels|boards|share)[^`'"]*?)(?:[`'"])/g)) {
+      const raw = match[1];
+      if (raw.includes('${feature}') || raw.includes('${path}') || raw.includes('${scope}')) continue;
+      const normalized = `/api${raw}`.replace(/\$\{[^}]+\}/g, ':param').replace(/\/+$/, '');
+      if (!registeredPatterns.has(normalized)) {
+        missing.push(`${file}: ${raw} (expected ${normalized})`);
+      }
+    }
+  }
+
+  assert.deepEqual(missing, []);
+});
+
