@@ -26,6 +26,48 @@ function pageview(website: string, extra: Record<string, unknown> = {}) {
 test.describe('Collection', () => {
   test.describe.configure({ mode: 'serial' });
 
+  test('TelemetryDeck fills missing session location from later Cloudflare headers', async ({
+    api,
+    admin,
+    seed,
+  }) => {
+    test.skip(seed.db !== 'postgres', 'Postgres persists one location per session.');
+    const site = await createWebsite(admin);
+    try {
+      const signal = {
+        appID: site.id,
+        type: 'TelemetryDeck.Navigation.pathChanged',
+        clientUser: 'b'.repeat(64),
+        payload: { 'TelemetryDeck.Navigation.destinationPath': '/home' },
+      };
+      const send = async (location: Record<string, string>) => {
+        const res = await api.post('/v2/namespace/geo-check/', [signal], {
+          headers: { 'cf-connecting-ip': '8.8.8.8', ...location },
+        });
+        expect(res.body).toEqual({ accepted: 1, rejected: 0, dropped: 0 });
+      };
+      const startAt = Date.now() - 60000;
+      const location = async () => {
+        const res = await admin.get(`/api/websites/${site.id}/sessions`, {
+          params: { startAt, endAt: Date.now() + 1000 },
+        });
+        expect(res.status).toBe(200);
+        expect(res.body.count).toBe(1);
+        return res.body.data[0];
+      };
+      await send({});
+      expect(await location()).toMatchObject({ country: null, city: null });
+      await send({ 'cf-ipcountry': 'CA' });
+      expect(await location()).toMatchObject({ country: 'CA', city: null });
+      await send({ 'cf-ipcountry': 'US', 'cf-region-code': 'WA', 'cf-ipcity': 'Seattle' });
+      expect(await location()).toMatchObject({ country: 'CA', city: null });
+      await send({ 'cf-ipcountry': 'CA', 'cf-region-code': 'QC', 'cf-ipcity': 'Montr%C3%A9al' });
+      expect(await location()).toMatchObject({ country: 'CA', region: 'CA-QC', city: 'Montréal' });
+    } finally {
+      await deleteWebsite(admin, site.id);
+    }
+  });
+
   test('POST /api/send records a pageview and returns a cache token', async ({ api, seed }) => {
     const response = await api.post('/api/send', pageview(seed.website.id));
 
