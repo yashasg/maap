@@ -91,10 +91,8 @@ pub fn register_analytics_routes(mut router: Router<AppState>) -> Router<AppStat
     for path in [
         "/api/websites/{website_id}/utm/metrics",
         "/api/websites/{website_id}/breakdown",
-        "/api/websites/{website_id}/funnels",
         "/api/websites/{website_id}/funnels/stats",
         "/api/websites/{website_id}/funnels/{report_id}/stats",
-        "/api/websites/{website_id}/goals",
         "/api/websites/{website_id}/goals/stats",
         "/api/websites/{website_id}/goals/{report_id}/stats",
         "/api/websites/{website_id}/retention",
@@ -106,17 +104,30 @@ pub fn register_analytics_routes(mut router: Router<AppState>) -> Router<AppStat
         "/api/websites/{website_id}/performance/chart",
         "/api/websites/{website_id}/errors/values",
         "/api/websites/{website_id}/errors/{issue_id}/values",
+        "/api/websites/{website_id}/event-data-pivot/array-series",
+        "/api/websites/{website_id}/event-data-pivot/date-series",
+        "/api/websites/{website_id}/event-data-pivot/numeric-series",
+        "/api/websites/{website_id}/event-data-pivot/property-series",
+        "/api/websites/{website_id}/session-data/array-series",
+        "/api/websites/{website_id}/session-data/date-series",
+        "/api/websites/{website_id}/session-data/numeric-series",
+        "/api/websites/{website_id}/session-data/property-series",
+        "/api/websites/{website_id}/session-data/stats",
     ] {
         router = router.route(path, get(empty_array));
     }
 
     for path in [
+        "/api/websites/{website_id}/funnels",
+        "/api/websites/{website_id}/goals",
         "/api/websites/{website_id}/sessions/{session_id}/replays",
         "/api/websites/{website_id}/revenue/sessions",
         "/api/websites/{website_id}/replays",
         "/api/websites/{website_id}/replays/saved",
         "/api/websites/{website_id}/errors",
         "/api/websites/{website_id}/errors/{issue_id}/events",
+        "/api/websites/{website_id}/event-data-pivot",
+        "/api/websites/{website_id}/session-data-pivot",
     ] {
         router = router.route(path, get(empty_page));
     }
@@ -125,6 +136,8 @@ pub fn register_analytics_routes(mut router: Router<AppState>) -> Router<AppStat
         "/api/websites/{website_id}/funnels/{report_id}",
         "/api/websites/{website_id}/goals/{report_id}",
         "/api/websites/{website_id}/errors/{issue_id}/events/{event_id}",
+        "/api/websites/{website_id}/event-data-pivot/numeric-stats",
+        "/api/websites/{website_id}/session-data/numeric-stats",
     ] {
         router = router.route(path, get(empty_object));
     }
