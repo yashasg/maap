@@ -1683,6 +1683,23 @@ async fn handle_mcp(
     with_rust_header(StatusCode::BAD_REQUEST.into_response())
 }
 
+fn is_hop_by_hop(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "connection"
+            | "keep-alive"
+            | "proxy-authenticate"
+            | "proxy-authorization"
+            | "te"
+            | "trailer"
+            | "transfer-encoding"
+            | "upgrade"
+            | "content-length"
+            | "content-encoding"
+            | "host"
+    )
+}
+
 async fn proxy_json_to_node(
     client: &reqwest::Client,
     upstream: &str,
@@ -1693,7 +1710,7 @@ async fn proxy_json_to_node(
     let url = format!("{upstream}{path}");
     let mut rb = client.post(&url);
     for (k, v) in headers {
-        if k != header::HOST && k != header::CONTENT_LENGTH {
+        if !is_hop_by_hop(k.as_str()) && k != header::ACCEPT_ENCODING {
             rb = rb.header(k.as_str(), v.as_bytes());
         }
     }
@@ -1711,11 +1728,13 @@ async fn convert_reqwest_response(resp: reqwest::Response) -> Response {
     *out.status_mut() = status;
     for (k, v) in headers {
         if let Some(name) = k {
-            if let (Ok(hn), Ok(hv)) = (
-                HeaderName::from_bytes(name.as_str().as_bytes()),
-                HeaderValue::from_bytes(v.as_bytes()),
-            ) {
-                out.headers_mut().insert(hn, hv);
+            if !is_hop_by_hop(name.as_str()) {
+                if let (Ok(hn), Ok(hv)) = (
+                    HeaderName::from_bytes(name.as_str().as_bytes()),
+                    HeaderValue::from_bytes(v.as_bytes()),
+                ) {
+                    out.headers_mut().append(hn, hv);
+                }
             }
         }
     }
@@ -1741,7 +1760,7 @@ async fn fallback_proxy(State(state): State<AppState>, req: Request) -> Response
 
     let mut rb = state.http.request(method, &url);
     for (k, v) in &headers {
-        if k != header::HOST && k != header::CONTENT_LENGTH {
+        if !is_hop_by_hop(k.as_str()) && k != header::ACCEPT_ENCODING {
             rb = rb.header(k.as_str(), v.as_bytes());
         }
     }
@@ -2009,5 +2028,64 @@ mod tests {
             fallback_os_icon("https://play.google.com/store/apps/details?id=com.example.app"),
             "/images/os/android-os.png"
         );
+    }
+
+    #[tokio::test]
+    async fn reverse_proxy_strips_chunked_transfer_encoding_cleanly() {
+        let upstream_app = Router::new()
+            .route(
+                "/api/heartbeat",
+                get(|| async { Json(json!({ "ok": true })) }),
+            )
+            .route(
+                "/api/auth/login",
+                post(|Json(body): Json<Value>| async move {
+                    Json(json!({ "token": "tok-123", "echo": body })).into_response()
+                }),
+            );
+        let up_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let up_addr = up_listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(up_listener, upstream_app).await.unwrap();
+        });
+
+        let state = AppState {
+            db: None,
+            http: reqwest::Client::new(),
+            td_options: TdOptions::default(),
+            node_upstream: Some(format!("http://{up_addr}")),
+            icon_cache: Arc::new(RwLock::new(HashMap::new())),
+        };
+        let proxy_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy_addr = proxy_listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(proxy_listener, build_router(state))
+                .await
+                .unwrap();
+        });
+
+        let client = reqwest::Client::new();
+        let hb = client
+            .get(format!("http://{proxy_addr}/api/heartbeat"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(hb.status(), StatusCode::OK);
+        assert_eq!(
+            hb.headers()
+                .get("x-maap-server")
+                .and_then(|v| v.to_str().ok()),
+            Some("rust")
+        );
+
+        let login = client
+            .post(format!("http://{proxy_addr}/api/auth/login"))
+            .json(&json!({ "username": "admin", "password": "umami" }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(login.status(), StatusCode::OK);
+        let payload: Value = login.json().await.unwrap();
+        assert_eq!(payload.get("token").and_then(|v| v.as_str()), Some("tok-123"));
     }
 }
