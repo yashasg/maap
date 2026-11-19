@@ -1,7 +1,9 @@
-# Maap: iOS telemetry for Umami
+# Maap (माप) — Mobile App Analytics Platform
 
-Maap adds a TelemetryDeck receiver to Umami 3.5.0. An unmodified iOS SDK posts its
-batch to `/v2/` or `/v2/namespace/<name>/`; each signal goes through Umami's
+*Maap* means **measure** in Hindi (माप) and stands for **Mobile App Analytics Platform**.
+
+Maap adds a TelemetryDeck-compatible receiver and multi-platform app support (`iOS`, `macOS`, `Android`, and `Website`) to Umami 3.5.0. An unmodified mobile/desktop SDK posts its
+batch to `/v2/` or `/v2/namespace/<name>/`; each signal goes through the
 existing `/api/send` handler in-process. No translation service is required.
 
 | From the SDK | In the dashboard |
@@ -30,3 +32,9 @@ Workload Identity Federation (`deploy/maap/deploy.sh`).
   verify backups. Supply an already-protected dashboard and public ingestion paths.
 - [iOS integration](docs/maap-ios.md): exact Swift SDK pin and initializer,
   redacted capture procedure, and the timed three-screen/one-event acceptance check.
+
+## Server Runtime (`MAAP_SERVER`)
+
+- **`MAAP_SERVER=rust` (default):** Runs the compiled Rust server (`rust/`, Axum + SQLx Postgres) as PID 1 on `:3000`. It natively serves `/v2/*`, `/api/send`, `/api/heartbeat`, and `/app-icon` (`x-maap-server: rust`), proxies Next.js UI routes to `127.0.0.1:3001`, and supports standalone zero-Node execution (`MAAP_NODE_FALLBACK=0`) for `/api/auth/login`, `/api/websites`, `/api/websites/:id/metrics`, `/api/websites/:id/stats`, `/api/me/api-keys`, and `/mcp`.
+- **`MAAP_SERVER=node`:** Falls back to the legacy Node.js `server.js` directly on `:3000`.
+- **Lightweight frontend delivery (next):** Replace the Next.js SSR UI with a static SPA so `MAAP_NODE_FALLBACK=0` becomes the permanent default.

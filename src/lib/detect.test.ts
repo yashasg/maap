@@ -14,6 +14,7 @@ beforeEach(() => {
   vi.resetAllMocks();
 
   delete process.env.CLIENT_IP_HEADER;
+  delete process.env.DISABLE_GEOIP;
   delete process.env.IGNORE_IP;
   delete process.env.SKIP_LOCATION_HEADERS;
 });
@@ -80,4 +81,27 @@ test('hasBlockedIp: returns false for malformed client ip with cidr block', () =
   process.env.IGNORE_IP = '10.0.0.0/8';
 
   expect(hasBlockedIp('not-an-ip')).toBe(false);
+});
+
+test('getLocation: skips MaxMind DB lookup when DISABLE_GEOIP is set while still reading Cloudflare headers', async () => {
+  process.env.DISABLE_GEOIP = '1';
+  isLocalhost.default.mockResolvedValue(false);
+
+  await expect(
+    getLocation(
+      '8.8.8.8',
+      new Headers({
+        'cf-ipcountry': 'US',
+        'cf-region-code': 'WA',
+        'cf-ipcity': 'Seattle',
+      }),
+      false,
+    ),
+  ).resolves.toEqual({
+    country: 'US',
+    region: 'US-WA',
+    city: 'Seattle',
+  });
+
+  await expect(getLocation('8.8.8.8', new Headers(), false)).resolves.toBeNull();
 });

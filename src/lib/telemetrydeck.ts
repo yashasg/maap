@@ -84,9 +84,11 @@ export function mapSignal(signal: unknown, options: Options = {}, now = Date.now
   }
 
   const model = props['TelemetryDeck.Device.modelName'] ?? props.modelName;
-  const device = model?.startsWith('iPad') ? 'tablet' : 'mobile';
   const appVersion = props['TelemetryDeck.AppInfo.version'] ?? props.appVersion;
   const osName = props['TelemetryDeck.Device.operatingSystem'] ?? props.operatingSystem;
+  const isMac = osName?.toLowerCase().startsWith('mac') || model?.startsWith('Mac');
+  const isAndroid = osName?.toLowerCase().startsWith('android');
+  const device = isMac ? 'desktop' : model?.startsWith('iPad') ? 'tablet' : 'mobile';
   const version =
     props['TelemetryDeck.Device.systemMajorMinorVersion'] ?? props.majorMinorSystemVersion;
   // Swift's systemMajorMinorVersion already includes the platform ("iOS 17.4").
@@ -95,12 +97,15 @@ export function mapSignal(signal: unknown, options: Options = {}, now = Date.now
   const systemVersion = props['TelemetryDeck.Device.systemVersion'] ?? props.systemVersion;
   const agentVersion = systemVersion?.match(/\d+(?:\.\d+){0,2}$/)?.[0] ?? majorMinor ?? '17.0';
   const agentDevice = device === 'tablet' ? 'iPad; CPU OS' : 'iPhone; CPU iPhone OS';
-  // Use Safari's UA shape rather than the SDK's CFNetwork agent. send still owns
-  // fingerprinting, bot filtering and the original forwarded-IP / geo headers.
-  const userAgent =
-    `Mozilla/5.0 (${agentDevice} ${agentVersion.replaceAll('.', '_')} like Mac OS X) ` +
-    `AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${majorMinor ?? agentVersion} ` +
-    'Mobile/15E148 Safari/604.1';
+  // Use Safari/Chrome UA shapes rather than the SDK's CFNetwork/OkHttp agent. send still
+  // owns fingerprinting, bot filtering and the original forwarded-IP / geo headers.
+  const userAgent = isMac
+    ? `Mozilla/5.0 (Macintosh; Intel Mac OS X ${agentVersion.replaceAll('.', '_')}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${majorMinor ?? agentVersion} Safari/605.1.15`
+    : isAndroid
+      ? `Mozilla/5.0 (Linux; Android ${agentVersion}; ${model || 'Pixel'}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36`
+      : `Mozilla/5.0 (${agentDevice} ${agentVersion.replaceAll('.', '_')} like Mac OS X) ` +
+        `AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${majorMinor ?? agentVersion} ` +
+        'Mobile/15E148 Safari/604.1';
   const width = dimension(props['TelemetryDeck.Device.screenResolutionWidth']);
   const height = dimension(props['TelemetryDeck.Device.screenResolutionHeight']);
   const nav = signal.type === 'TelemetryDeck.Navigation.pathChanged';
@@ -109,7 +114,8 @@ export function mapSignal(signal: unknown, options: Options = {}, now = Date.now
     type: 'event',
     payload: {
       website: website.toLowerCase(),
-      hostname: options.hostname || 'app.ios',
+      hostname:
+        options.hostname || (isMac ? 'app.macos' : isAndroid ? 'app.android' : 'app.ios'),
       id,
       timestamp: eventTimestamp(signal.receivedAt, now),
       userAgent,

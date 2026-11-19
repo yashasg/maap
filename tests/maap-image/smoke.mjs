@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
-const origin = 'http://127.0.0.1:3000';
+const origin = process.env.MAAP_SMOKE_ORIGIN || 'http://127.0.0.1:3000';
 async function request(path, { body, token, headers } = {}) {
   const res = await fetch(origin + path, {
     method: body === undefined ? 'GET' : 'POST',
@@ -24,7 +24,14 @@ const { token } = await (
 ).json();
 assert.ok(token);
 const appID = randomUUID();
-await request('/api/websites', { token, body: { id: appID, name: 'Maap CI', domain: 'app.ios' } });
+await request('/api/websites', {
+  token,
+  body: {
+    id: appID,
+    name: 'Maap CI',
+    domain: 'https://apps.apple.com/us/app/xpenshare/id6741827585',
+  },
+});
 
 const startAt = Date.now() - 60000;
 const historicalAt = startAt - 10 * 60000;
@@ -39,12 +46,19 @@ const base = {
 };
 const screens = ['Home', 'Catalog', 'Detail'];
 const navigation = await request('/v2/', {
+  headers: {
+    'cf-connecting-ip': '8.8.8.8',
+    'cf-ipcountry': 'US',
+    'cf-region-code': 'WA',
+    'cf-ipcity': 'Seattle',
+  },
   body: screens.map(screen => ({
     ...base,
     type: 'TelemetryDeck.Navigation.pathChanged',
     payload: { ...base.payload, 'TelemetryDeck.Navigation.destinationPath': `/${screen}` },
   })),
 });
+assert.equal(navigation.headers.get('x-maap-server'), 'rust');
 assert.deepEqual(await navigation.json(), { accepted: 3, rejected: 0, dropped: 0 });
 const actions = await request('/v2/namespace/ios/', {
   body: [
@@ -52,6 +66,7 @@ const actions = await request('/v2/namespace/ios/', {
     { ...base, type: 'TestOnly', isTestMode: 'true', receivedAt: sdkDate(historicalAt) },
   ],
 });
+assert.equal(actions.headers.get('x-maap-server'), 'rust');
 assert.deepEqual(await actions.json(), { accepted: 2, rejected: 0, dropped: 0 });
 
 const endAt = Date.now() + 1000;
@@ -62,6 +77,8 @@ async function metric(website, type, from = startAt, to = endAt, extra = {}) {
 }
 assert.deepEqual(await metric(appID, 'path'), screens.map(screen => `/${screen}`).sort());
 assert.deepEqual(await metric(appID, 'browser'), ['App 1.2.3']);
+assert.deepEqual(await metric(appID, 'country'), ['US']);
+assert.deepEqual(await metric(appID, 'city'), ['Seattle']);
 assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, endAt), ['DemoEvent']);
 assert.deepEqual(await metric(appID, 'event', historicalAt - 1000, historicalAt + 1000, { tag: 'test' }), ['TestOnly']);
 const filter = new URLSearchParams({ startAt, endAt, browser: 'App 1.2.3' });
@@ -102,4 +119,24 @@ const reply = rpc.headers.get('content-type')?.includes('text/event-stream')
       .map(line => JSON.parse(line.slice(5))).find(message => message.id === 1)
   : await rpc.json();
 assert.equal(reply?.result?.structuredContent?.current?.pageviews, 3);
-console.log('Verified both ingestion paths, pageviews, Browser, test isolation and MCP stats.');
+
+// Verify static app routes (/login, /websites), /_next/static chunks, and /app-icon -> /images/os/ios.png
+// are served directly by the Rust server (including when Node is completely severed).
+for (const appRoute of ['/login', '/websites']) {
+  const page = await request(appRoute);
+  assert.equal(page.headers.get('x-maap-server'), 'rust', `${appRoute} served by Rust`);
+  const html = await page.text();
+  assert.match(html, /Maap/);
+  const chunkMatch = html.match(/\/_next\/static\/[^"'\s>]+\.js/);
+  assert.ok(chunkMatch, `${appRoute} references a /_next/static JS bundle`);
+  const chunk = await request(chunkMatch[0]);
+  assert.equal(chunk.headers.get('x-maap-server'), 'rust');
+  assert.match(chunk.headers.get('cache-control') || '', /immutable/);
+}
+const fallbackIcon = await request('/app-icon?url=https://apps.apple.com/app/id999999999');
+assert.equal(fallbackIcon.headers.get('x-maap-server'), 'rust');
+assert.equal(fallbackIcon.headers.get('content-type'), 'image/png');
+const brandLogo = await request('/logo.png');
+assert.equal(brandLogo.headers.get('x-maap-server'), 'rust');
+assert.equal(brandLogo.headers.get('content-type'), 'image/png');
+console.log('Verified both ingestion paths, pageviews, Browser, test isolation, static app routes and MCP stats.');

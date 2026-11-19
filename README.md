@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://content.umami.is/website/images/umami-logo.png" alt="Umami Logo" width="100">
+  <img src="public/logo.png" alt="Maap Logo" width="100">
 </p>
 
-<h1 align="center">Umami</h1>
+<h1 align="center">Maap (माप)</h1>
 
 <p align="center">
-  <i>Umami is an open-source web and product analytics platform. Understand acquisition, behavior, conversion, and retention with privacy-first analytics — no cookies, self-hosted or in the cloud.</i>
+  <i><b>Maap</b> ("measure" in Hindi — माप — and <b>Mobile App Analytics Platform</b>) is a self-hosted analytics platform for iOS, macOS, Android, and web applications, built on Umami.</i>
 </p>
 
 <p align="center">

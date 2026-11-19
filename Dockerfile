@@ -3,6 +3,13 @@ ARG PNPM_VERSION="12.3.4"
 # Keep in sync with the prisma/@prisma/* versions in package.json
 ARG PRISMA_VERSION="7.10.0"
 
+FROM rust:1.100.0-alpine AS rust-builder
+RUN apk add --no-cache musl-dev
+WORKDIR /app/rust
+COPY rust/Cargo.toml rust/Cargo.lock ./
+COPY rust/src ./src
+RUN cargo test --locked && cargo build --release --locked
+
 # Install dependencies only when needed
 FROM node:${NODE_IMAGE_VERSION} AS deps
 ARG PNPM_VERSION
@@ -97,6 +104,7 @@ COPY --from=builder /app/generated ./generated
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=rust-builder --chown=nextjs:nodejs /app/rust/target/release/maap-server ./maap-server
 
 USER nextjs
 
