@@ -1429,63 +1429,74 @@ async fn handle_website_metrics(
     let test_only = params.get("testMode").map(String::as_str) == Some("true")
         || params.get("tag").map(String::as_str) == Some("test");
 
-    let sql = match metric_type {
-        "path" | "url" => {
-            if test_only {
-                "SELECT url_path AS x, COUNT(DISTINCT session_id)::bigint AS y FROM website_event WHERE website_id = $1 AND created_at BETWEEN $2 AND $3 AND event_type NOT IN (2, 5) AND tag = 'test' AND url_path != '' GROUP BY 1 ORDER BY 2 DESC"
-            } else {
-                "SELECT url_path AS x, COUNT(DISTINCT session_id)::bigint AS y FROM website_event WHERE website_id = $1 AND created_at BETWEEN $2 AND $3 AND event_type NOT IN (2, 5) AND COALESCE(tag, '') != 'test' AND url_path != '' GROUP BY 1 ORDER BY 2 DESC"
-            }
-        }
-        "event" => {
-            if test_only {
-                "SELECT event_name AS x, COUNT(*)::bigint AS y FROM website_event WHERE website_id = $1 AND created_at BETWEEN $2 AND $3 AND event_type = 2 AND tag = 'test' AND event_name IS NOT NULL GROUP BY 1 ORDER BY 2 DESC"
-            } else {
-                "SELECT event_name AS x, COUNT(*)::bigint AS y FROM website_event WHERE website_id = $1 AND created_at BETWEEN $2 AND $3 AND event_type = 2 AND COALESCE(tag, '') != 'test' AND event_name IS NOT NULL GROUP BY 1 ORDER BY 2 DESC"
-            }
-        }
-        "browser" | "os" | "device" | "screen" | "country" | "region" | "city" | "language" => {
-            let col = if metric_type == "language" {
-                "lower(left(s.language, 2))"
-            } else {
-                match metric_type {
-                    "browser" => "s.browser",
-                    "os" => "s.os",
-                    "device" => "s.device",
-                    "screen" => "s.screen",
-                    "country" => "s.country",
-                    "region" => "s.region",
-                    "city" => "s.city",
-                    _ => unreachable!(),
-                }
-            };
-            let tag_cond = if test_only {
-                "e.tag = 'test'"
-            } else {
-                "COALESCE(e.tag, '') != 'test'"
-            };
-            let query_str = format!(
-                "SELECT {col} AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e JOIN session s ON s.session_id = e.session_id AND s.website_id = e.website_id WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND COALESCE({col}, '') != '' GROUP BY 1 ORDER BY 2 DESC"
-            );
-            let Ok(rows) = sqlx::query(&query_str)
-                .bind(website_id)
-                .bind(start_date)
-                .bind(end_date)
-                .fetch_all(pool)
-                .await
-            else {
-                return with_rust_header(StatusCode::INTERNAL_SERVER_ERROR.into_response());
-            };
-            let out: Vec<Value> = rows
-                .into_iter()
-                .map(|r| json!({ "x": r.get::<String, _>("x"), "y": r.get::<i64, _>("y") }))
-                .collect();
-            return with_rust_header(Json(out).into_response());
-        }
-        _ => return with_rust_header(StatusCode::BAD_REQUEST.into_response()),
+    let tag_cond = if test_only {
+        "e.tag = 'test'"
+    } else {
+        "COALESCE(e.tag, '') != 'test'"
     };
 
-    let Ok(rows) = sqlx::query(sql)
+    if matches!(metric_type, "city" | "region") {
+        let col = if metric_type == "city" { "s.city" } else { "s.region" };
+        let q = format!(
+            "SELECT {col} AS x, COUNT(DISTINCT e.session_id)::bigint AS y, s.country AS country FROM website_event e JOIN session s ON s.session_id = e.session_id AND s.website_id = e.website_id WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND COALESCE({col}, '') != '' GROUP BY 1, 3 ORDER BY 2 DESC LIMIT 500"
+        );
+        let Ok(rows) = sqlx::query(&q).bind(website_id).bind(start_date).bind(end_date).fetch_all(pool).await else {
+            return with_rust_header(StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        };
+        let out: Vec<Value> = rows
+            .into_iter()
+            .map(|r| json!({ "x": r.get::<String, _>("x"), "y": r.get::<i64, _>("y"), "country": r.get::<Option<String>, _>("country") }))
+            .collect();
+        return with_rust_header(Json(out).into_response());
+    }
+
+    let query_str = match metric_type {
+        "path" | "url" | "entry" | "exit" => format!(
+            "SELECT e.url_path AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND e.url_path != '' GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+        ),
+        "fullPath" => format!(
+            "SELECT CASE WHEN COALESCE(e.url_query, '') != '' THEN e.url_path || '?' || e.url_query ELSE e.url_path END AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND e.url_path != '' GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+        ),
+        "referrer" | "domain" => format!(
+            "SELECT e.referrer_domain AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND COALESCE(e.referrer_domain, '') != '' GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+        ),
+        "title" => format!(
+            "SELECT e.page_title AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND COALESCE(e.page_title, '') != '' GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+        ),
+        "query" => format!(
+            "SELECT e.url_query AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND COALESCE(e.url_query, '') != '' GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+        ),
+        "tag" => format!(
+            "SELECT e.tag AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND COALESCE(e.tag, '') != '' GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+        ),
+        "hostname" => format!(
+            "SELECT e.hostname AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND COALESCE(e.hostname, '') != '' GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+        ),
+        "channel" => format!(
+            "SELECT CASE WHEN COALESCE(e.referrer_domain, '') != '' THEN 'referral' ELSE 'direct' END AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} GROUP BY 1 ORDER BY 2 DESC"
+        ),
+        "event" => format!(
+            "SELECT e.event_name AS x, COUNT(*)::bigint AS y FROM website_event e WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type = 2 AND {tag_cond} AND e.event_name IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+        ),
+        "browser" | "os" | "device" | "screen" | "country" | "language" | "distinctId" => {
+            let col = match metric_type {
+                "language" => "lower(left(s.language, 2))",
+                "browser" => "s.browser",
+                "os" => "s.os",
+                "device" => "s.device",
+                "screen" => "s.screen",
+                "country" => "s.country",
+                "distinctId" => "s.distinct_id",
+                _ => unreachable!(),
+            };
+            format!(
+                "SELECT {col} AS x, COUNT(DISTINCT e.session_id)::bigint AS y FROM website_event e JOIN session s ON s.session_id = e.session_id AND s.website_id = e.website_id WHERE e.website_id = $1 AND e.created_at BETWEEN $2 AND $3 AND e.event_type NOT IN (2, 5) AND {tag_cond} AND COALESCE({col}, '') != '' GROUP BY 1 ORDER BY 2 DESC LIMIT 500"
+            )
+        }
+        _ => return with_rust_header(Json(Vec::<Value>::new()).into_response()),
+    };
+
+    let Ok(rows) = sqlx::query(&query_str)
         .bind(website_id)
         .bind(start_date)
         .bind(end_date)
@@ -1878,8 +1889,8 @@ async fn try_serve_static_or_spa(
         }
     }
 
-    // If Next.js RSC client flight data is requested and Node is still attached, let Node answer RSC.
-    if !severed && has_rsc_header {
+    // Never serve full HTML documents to Next.js RSC / segment-prefetch requests.
+    if has_rsc_header {
         return None;
     }
 

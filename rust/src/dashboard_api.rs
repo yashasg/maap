@@ -82,12 +82,23 @@ pub fn register_dashboard_routes(router: Router<AppState>) -> Router<AppState> {
         .route("/api/boards", get(handle_empty_page))
         .route("/api/teams", get(handle_empty_page))
         .route("/api/admin/users", get(handle_admin_users))
+        .route(
+            "/api/admin/users/{user_id}/2fa",
+            get(handle_two_factor_status),
+        )
         .route("/api/admin/websites", get(handle_admin_websites))
         .route("/api/admin/teams", get(handle_admin_teams))
         .route(
             "/api/users/{user_id}",
             get(handle_get_user).post(handle_update_user),
         )
+        .route("/api/users/{user_id}/websites", get(handle_user_websites))
+        .route("/api/users/{user_id}/teams", get(handle_empty_page))
+        .route("/api/teams/{team_id}/websites", get(handle_empty_page))
+        .route("/api/teams/{team_id}/users", get(handle_empty_page))
+        .route("/api/teams/{team_id}/links", get(handle_empty_page))
+        .route("/api/teams/{team_id}/pixels", get(handle_empty_page))
+        .route("/api/teams/{team_id}/boards", get(handle_empty_page))
         .route("/telemetry.js", get(handle_telemetry_script))
         .route("/api/scripts/telemetry", get(handle_telemetry_script))
 }
@@ -480,6 +491,29 @@ async fn handle_websites(
         Err(response) => return response,
     };
     match website_page(pool, user_id, &params).await {
+        Ok(value) => json_response(value),
+        Err(_) => status_response(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+async fn handle_user_websites(
+    State(state): State<AppState>,
+    Path(target_user_id): Path<Uuid>,
+    Query(params): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    let pool = match database(&state) {
+        Ok(pool) => pool,
+        Err(response) => return response,
+    };
+    let (auth_user_id, role) = match authenticate(pool, &headers, "/api/websites").await {
+        Ok(auth) => auth,
+        Err(response) => return response,
+    };
+    if auth_user_id != target_user_id && role != "admin" {
+        return error_response(StatusCode::UNAUTHORIZED, "Unauthorized");
+    }
+    match website_page(pool, target_user_id, &params).await {
         Ok(value) => json_response(value),
         Err(_) => status_response(StatusCode::INTERNAL_SERVER_ERROR),
     }
