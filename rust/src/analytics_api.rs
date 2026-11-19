@@ -1,10 +1,13 @@
-use super::{check_bearer_auth, parse_ms_param, with_rust_header, AppState};
+use super::{
+    check_bearer_auth, error_response, json_response, page_params, parse_ms_param,
+    with_rust_header, AppState,
+};
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
-    Json, Router,
+    Router,
 };
 use chrono::{DateTime, Duration, Utc};
 use rust_decimal::Decimal;
@@ -13,10 +16,8 @@ use sqlx::{PgPool, Row};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
-const DEFAULT_PAGE_SIZE: i64 = 20;
-
-pub fn register_analytics_routes(router: Router<AppState>) -> Router<AppState> {
-    router
+pub fn register_analytics_routes(mut router: Router<AppState>) -> Router<AppState> {
+    router = router
         .route("/api/websites/{website_id}/pageviews", get(pageviews))
         .route("/api/websites/{website_id}/active", get(active))
         .route("/api/realtime/{website_id}", get(realtime))
@@ -79,113 +80,77 @@ pub fn register_analytics_routes(router: Router<AppState>) -> Router<AppState> {
             get(session_properties),
         )
         .route(
-            "/api/websites/{website_id}/sessions/{session_id}/replays",
-            get(empty_page),
-        )
-        .route(
             "/api/websites/{website_id}/session-data/properties",
             get(session_data_properties),
         )
         .route(
             "/api/websites/{website_id}/session-data/values",
             get(session_data_values),
-        )
-        .route("/api/websites/{website_id}/utm/metrics", get(empty_array))
-        .route("/api/websites/{website_id}/breakdown", get(empty_array))
-        .route("/api/websites/{website_id}/funnels", get(empty_array))
-        .route("/api/websites/{website_id}/funnels/stats", get(empty_array))
-        .route(
-            "/api/websites/{website_id}/funnels/{report_id}",
-            get(empty_object),
-        )
-        .route(
-            "/api/websites/{website_id}/funnels/{report_id}/stats",
-            get(empty_array),
-        )
-        .route("/api/websites/{website_id}/goals", get(empty_array))
-        .route("/api/websites/{website_id}/goals/stats", get(empty_array))
-        .route(
-            "/api/websites/{website_id}/goals/{report_id}",
-            get(empty_object),
-        )
-        .route(
-            "/api/websites/{website_id}/goals/{report_id}/stats",
-            get(empty_array),
-        )
-        .route("/api/websites/{website_id}/retention", get(empty_array))
-        .route(
-            "/api/websites/{website_id}/revenue/metrics",
-            get(empty_array),
-        )
-        .route("/api/websites/{website_id}/revenue/chart", get(empty_array))
-        .route(
-            "/api/websites/{website_id}/revenue/sessions",
-            get(empty_page),
-        )
-        .route(
-            "/api/websites/{website_id}/revenue/stats",
-            get(revenue_stats),
-        )
-        .route("/api/websites/{website_id}/journeys", get(empty_array))
-        .route("/api/websites/{website_id}/attribution", get(empty_array))
-        .route(
-            "/api/websites/{website_id}/performance/metrics",
-            get(empty_array),
-        )
-        .route(
-            "/api/websites/{website_id}/performance/chart",
-            get(empty_array),
-        )
+        );
+
+    for path in [
+        "/api/websites/{website_id}/utm/metrics",
+        "/api/websites/{website_id}/breakdown",
+        "/api/websites/{website_id}/funnels",
+        "/api/websites/{website_id}/funnels/stats",
+        "/api/websites/{website_id}/funnels/{report_id}/stats",
+        "/api/websites/{website_id}/goals",
+        "/api/websites/{website_id}/goals/stats",
+        "/api/websites/{website_id}/goals/{report_id}/stats",
+        "/api/websites/{website_id}/retention",
+        "/api/websites/{website_id}/revenue/metrics",
+        "/api/websites/{website_id}/revenue/chart",
+        "/api/websites/{website_id}/journeys",
+        "/api/websites/{website_id}/attribution",
+        "/api/websites/{website_id}/performance/metrics",
+        "/api/websites/{website_id}/performance/chart",
+        "/api/websites/{website_id}/errors/values",
+        "/api/websites/{website_id}/errors/{issue_id}/values",
+    ] {
+        router = router.route(path, get(empty_array));
+    }
+
+    for path in [
+        "/api/websites/{website_id}/sessions/{session_id}/replays",
+        "/api/websites/{website_id}/revenue/sessions",
+        "/api/websites/{website_id}/replays",
+        "/api/websites/{website_id}/replays/saved",
+        "/api/websites/{website_id}/errors",
+        "/api/websites/{website_id}/errors/{issue_id}/events",
+    ] {
+        router = router.route(path, get(empty_page));
+    }
+
+    for path in [
+        "/api/websites/{website_id}/funnels/{report_id}",
+        "/api/websites/{website_id}/goals/{report_id}",
+        "/api/websites/{website_id}/errors/{issue_id}/events/{event_id}",
+    ] {
+        router = router.route(path, get(empty_object));
+    }
+
+    router
+        .route("/api/websites/{website_id}/revenue/stats", get(revenue_stats))
         .route(
             "/api/websites/{website_id}/performance/stats",
             get(performance_stats),
         )
-        .route("/api/websites/{website_id}/replays", get(empty_page))
-        .route("/api/websites/{website_id}/replays/saved", get(empty_page))
         .route(
             "/api/websites/{website_id}/replays/saved/{replay_id}",
-            get(empty_saved_replay),
+            get(empty_object),
         )
         .route(
             "/api/websites/{website_id}/replays/{replay_id}",
-            get(empty_replay),
+            get(empty_object),
         )
-        .route("/api/websites/{website_id}/errors", get(empty_page))
         .route(
             "/api/websites/{website_id}/errors/stats",
             get(empty_error_stats),
         )
-        .route("/api/websites/{website_id}/errors/values", get(empty_array))
         .route(
             "/api/websites/{website_id}/errors/{issue_id}",
-            get(empty_error_issue),
+            get(empty_error_stats),
         )
-        .route(
-            "/api/websites/{website_id}/errors/{issue_id}/values",
-            get(empty_array),
-        )
-        .route(
-            "/api/websites/{website_id}/errors/{issue_id}/events",
-            get(empty_page),
-        )
-        .route(
-            "/api/websites/{website_id}/errors/{issue_id}/events/{event_id}",
-            get(empty_object),
-        )
-}
-
-fn json_response(value: Value) -> Response {
-    with_rust_header(Json(value).into_response())
-}
-
-fn error_response(status: StatusCode, message: impl Into<String>) -> Response {
-    with_rust_header(
-        (
-            status,
-            Json(json!({ "error": { "message": message.into() } })),
-        )
-            .into_response(),
-    )
 }
 
 async fn authorized_pool(state: &AppState, headers: &HeaderMap) -> Result<PgPool, Response> {
@@ -225,20 +190,6 @@ fn is_test_mode(params: &HashMap<String, String>) -> bool {
         || params
             .get("tag")
             .is_some_and(|value| value == "test" || value == "eq.test")
-}
-
-fn page_params(params: &HashMap<String, String>) -> (i64, i64, i64) {
-    let page = params
-        .get("page")
-        .and_then(|value| value.parse::<i64>().ok())
-        .unwrap_or(1)
-        .max(1);
-    let page_size = params
-        .get("pageSize")
-        .and_then(|value| value.parse::<i64>().ok())
-        .unwrap_or(DEFAULT_PAGE_SIZE)
-        .clamp(1, 500);
-    (page, page_size, (page - 1) * page_size)
 }
 
 fn unit(
@@ -1874,22 +1825,19 @@ async fn session_data_values(
     }
 }
 
-async fn authenticate_empty(state: &AppState, headers: &HeaderMap) -> Result<(), Response> {
-    authorized_pool(state, headers).await.map(|_| ())
+async fn stub_json(state: &AppState, headers: &HeaderMap, payload: Value) -> Response {
+    match authorized_pool(state, headers).await {
+        Ok(_) => json_response(payload),
+        Err(response) => response,
+    }
 }
 
 async fn empty_array(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
-    json_response(json!([]))
+    stub_json(&state, &headers, json!([])).await
 }
 
 async fn empty_object(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
-    json_response(json!({}))
+    stub_json(&state, &headers, json!({})).await
 }
 
 async fn empty_page(
@@ -1897,92 +1845,40 @@ async fn empty_page(
     Query(params): Query<HashMap<String, String>>,
     headers: HeaderMap,
 ) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
     let (page, page_size, _) = page_params(&params);
-    json_response(json!({ "data": [], "count": 0, "page": page, "pageSize": page_size }))
+    stub_json(
+        &state,
+        &headers,
+        json!({ "data": [], "count": 0, "page": page, "pageSize": page_size }),
+    )
+    .await
 }
 
 async fn revenue_stats(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
     let stats = json!({ "sum": 0, "count": 0, "average": 0, "unique_count": 0, "arpu": 0 });
-    json_response(json!({
-        "sum": 0,
-        "count": 0,
-        "average": 0,
-        "unique_count": 0,
-        "arpu": 0,
-        "comparison": stats
-    }))
-}
-
-fn performance_summary() -> Value {
-    json!({
-        "lcp": { "p50": 0, "p75": 0, "p95": 0 },
-        "inp": { "p50": 0, "p75": 0, "p95": 0 },
-        "cls": { "p50": 0, "p75": 0, "p95": 0 },
-        "fcp": { "p50": 0, "p75": 0, "p95": 0 },
-        "ttfb": { "p50": 0, "p75": 0, "p95": 0 },
-        "count": 0
-    })
+    stub_json(
+        &state,
+        &headers,
+        json!({ "sum": 0, "count": 0, "average": 0, "unique_count": 0, "arpu": 0, "comparison": stats }),
+    )
+    .await
 }
 
 async fn performance_stats(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
-    json_response(performance_summary())
-}
-
-async fn empty_replay(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
-    json_response(json!({
-        "sessionId": null,
-        "events": [],
-        "startedAt": null,
-        "endedAt": null,
-        "eventCount": 0,
-        "chunkCount": 0
-    }))
-}
-
-async fn empty_saved_replay(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
-    json_response(json!({ "isSaved": false }))
+    let z = json!({ "p50": 0, "p75": 0, "p95": 0 });
+    stub_json(
+        &state,
+        &headers,
+        json!({ "lcp": z, "inp": z, "cls": z, "fcp": z, "ttfb": z, "count": 0 }),
+    )
+    .await
 }
 
 async fn empty_error_stats(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
-    json_response(json!({
-        "occurrences": 0,
-        "visits": 0,
-        "issues": 0,
-        "firstSeen": null,
-        "lastSeen": null,
-        "series": []
-    }))
-}
-
-async fn empty_error_issue(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if let Err(response) = authenticate_empty(&state, &headers).await {
-        return response;
-    }
-    json_response(json!({
-        "occurrences": 0,
-        "visits": 0,
-        "issues": 0,
-        "firstSeen": null,
-        "lastSeen": null,
-        "series": [],
-        "canUpdate": false
-    }))
+    stub_json(
+        &state,
+        &headers,
+        json!({ "occurrences": 0, "visits": 0, "issues": 0, "firstSeen": null, "lastSeen": null, "series": [], "canUpdate": false }),
+    )
+    .await
 }

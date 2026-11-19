@@ -1,10 +1,12 @@
-use super::{check_bearer_auth, parse_ms_param, with_rust_header, AppState};
+use super::{
+    check_bearer_auth, error_response, json_response, page_params as paging, parse_ms_param,
+    status_response, with_rust_header, AppState,
+};
 use axum::{
     body::Body,
     extract::{Path, Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
-    middleware,
-    response::{IntoResponse, Response},
+    response::Response,
     routing::{delete, get, post},
     Json, Router,
 };
@@ -13,9 +15,6 @@ use serde_json::{json, Map, Value};
 use sqlx::{postgres::PgRow, PgPool, Row};
 use std::collections::HashMap;
 use uuid::Uuid;
-
-const DEFAULT_PAGE: i64 = 1;
-const DEFAULT_PAGE_SIZE: i64 = 20;
 
 pub fn register_dashboard_routes(router: Router<AppState>) -> Router<AppState> {
     router
@@ -91,32 +90,6 @@ pub fn register_dashboard_routes(router: Router<AppState>) -> Router<AppState> {
         )
         .route("/telemetry.js", get(handle_telemetry_script))
         .route("/api/scripts/telemetry", get(handle_telemetry_script))
-        .layer(middleware::map_response(|response: Response| async move {
-            with_rust_header(response)
-        }))
-}
-
-fn json_response(value: Value) -> Response {
-    with_rust_header(Json(value).into_response())
-}
-
-fn status_response(status: StatusCode) -> Response {
-    with_rust_header(status.into_response())
-}
-
-fn error_response(status: StatusCode, message: &str) -> Response {
-    with_rust_header(
-        (
-            status,
-            Json(json!({
-                "error": {
-                    "message": message,
-                    "status": status.as_u16()
-                }
-            })),
-        )
-            .into_response(),
-    )
 }
 
 fn database(state: &AppState) -> Result<&PgPool, Response> {
@@ -170,20 +143,6 @@ async fn authorize_website(
         return Err(error_response(StatusCode::UNAUTHORIZED, "Unauthorized"));
     }
     Ok(auth)
-}
-
-fn paging(params: &HashMap<String, String>) -> (i64, i64, i64) {
-    let page = params
-        .get("page")
-        .and_then(|value| value.parse::<i64>().ok())
-        .unwrap_or(DEFAULT_PAGE)
-        .max(1);
-    let page_size = params
-        .get("pageSize")
-        .and_then(|value| value.parse::<i64>().ok())
-        .unwrap_or(DEFAULT_PAGE_SIZE)
-        .clamp(1, 100);
-    (page, page_size, (page - 1) * page_size)
 }
 
 fn json_text(value: Option<String>) -> Value {

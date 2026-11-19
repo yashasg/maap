@@ -935,10 +935,47 @@ async fn persist_send_envelope(
     }))
 }
 
-fn with_rust_header(mut res: Response) -> Response {
+pub fn with_rust_header(mut res: Response) -> Response {
     res.headers_mut()
         .insert("x-maap-server", HeaderValue::from_static("rust"));
     res
+}
+
+pub fn json_response(value: Value) -> Response {
+    with_rust_header(Json(value).into_response())
+}
+
+pub fn status_response(status: StatusCode) -> Response {
+    with_rust_header(status.into_response())
+}
+
+pub fn error_response(status: StatusCode, message: impl Into<String>) -> Response {
+    with_rust_header(
+        (
+            status,
+            Json(json!({
+                "error": {
+                    "message": message.into(),
+                    "status": status.as_u16()
+                }
+            })),
+        )
+            .into_response(),
+    )
+}
+
+pub fn page_params(params: &HashMap<String, String>) -> (i64, i64, i64) {
+    let page = params
+        .get("page")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(1)
+        .max(1);
+    let page_size = params
+        .get("pageSize")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(20)
+        .clamp(1, 500);
+    (page, page_size, (page - 1) * page_size)
 }
 
 async fn heartbeat(State(state): State<AppState>) -> Response {
