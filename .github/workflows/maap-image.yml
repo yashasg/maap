@@ -68,6 +68,10 @@ jobs:
           docker compose config --quiet
           docker compose pull db
           docker compose up --wait --wait-timeout 240 --pull never db umami
+          docker inspect --format '{{json .State.Health.Log}}' "$(docker compose ps -q umami)" |
+            jq -e 'last.Output | fromjson | .ok and .server == "rust" and .node_processes == 0
+              and .rss_mib > 0 and .peak_rss_mib >= .rss_mib and .swap_mib >= 0
+              and .container_working_set_mib > 0 and .container_limit_mib == 450 and .host_available_mib > 0'
           docker compose exec -T umami node --input-type=module < tests/maap-image/smoke.mjs
           BACKUP_DIR="$(mktemp -d "$RUNNER_TEMP/maap-backup.XXXXXXXX")"
           export BACKUP_DIR

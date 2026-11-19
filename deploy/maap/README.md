@@ -33,6 +33,14 @@ For manual setup or inspection on the host:
    docker stats --no-stream
    ```
 
+   To read the most recent container health check (no public diagnostics endpoint):
+
+   ```sh
+   docker inspect --format '{{range .State.Health.Log}}{{printf "%s" .Output}}{{end}}' "$(docker compose ps -q umami)" | tail -n 1
+   ```
+
+   The JSON snapshot reports the main server's current and peak RSS and swap, the number of Node processes, the container working set and memory limit, and available host RAM, all memory values in MiB. Peak RSS is since that process started. Missing measurements and unlimited container limits are `null`; only the HTTP heartbeat determines health.
+
    Record the SHA and pulled image digest. The app runs DB migrations at startup. For subsequent releases, take and validate a backup first; change **only** the SHA in `.env`, `docker compose pull umami`, then `docker compose up -d --wait --wait-timeout 240 umami`. If unhealthy, check `docker compose logs --tail=80 umami db` privately and inspect memory/restart counts. Revert to the last healthy SHA only if the schema is compatible; otherwise plan recovery into a **fresh** volume from the pre-release backup. Never run `down -v` on production. Changing `POSTGRES_PASSWORD` in `.env` alone does not rotate a password in an existing volume.
 
 ## Bootstrap Umami and verify a release

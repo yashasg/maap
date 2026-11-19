@@ -26,7 +26,6 @@ x-umami-service: &umami-service
     - "${UMAMI_TEST_PORT:-3100}:3000"
   init: true
   healthcheck:
-    test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/heartbeat || exit 1"]
     interval: 2s
     timeout: 5s
     retries: 90
