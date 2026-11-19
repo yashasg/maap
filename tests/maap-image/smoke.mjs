@@ -136,4 +136,7 @@ for (const appRoute of ['/login', '/websites']) {
 const fallbackIcon = await request('/app-icon?url=https://apps.apple.com/app/id999999999');
 assert.equal(fallbackIcon.headers.get('x-maap-server'), 'rust');
 assert.equal(fallbackIcon.headers.get('content-type'), 'image/png');
+const brandLogo = await request('/logo.png');
+assert.equal(brandLogo.headers.get('x-maap-server'), 'rust');
+assert.equal(brandLogo.headers.get('content-type'), 'image/png');
 console.log('Verified both ingestion paths, pageviews, Browser, test isolation, static app routes and MCP stats.');
