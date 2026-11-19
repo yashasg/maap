@@ -1,10 +1,10 @@
 'use client';
 import { Column, Loading } from '@umami/react-zen';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { type PropsWithChildren, useEffect } from 'react';
 import { useLoginQuery } from '@/components/hooks';
+import { LogoutPage } from '../logout/LogoutPage';
 import { LoginForm } from './LoginForm';
-import { PropsWithChildren } from 'react';
 
 export function LoginPageWrapper({ children }: PropsWithChildren) {
   const { user, isLoading } = useLoginQuery();
@@ -34,6 +34,8 @@ export function LoginPageWrapper({ children }: PropsWithChildren) {
 }
 
 export function LoginPage() {
+  // The standalone server uses this static shell for the otherwise dynamic logout page.
+  if (usePathname() === '/logout') return <LogoutPage />;
   return (
     <LoginPageWrapper>
       <LoginForm />

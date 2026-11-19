@@ -506,6 +506,25 @@ test.describe('Event data', () => {
     expect(Number(response.body.median)).toBeCloseTo(59.5, 5);
     expect(Number(response.body.total)).toBeCloseTo(PURCHASE_TOTAL, 5);
 
+    const segment = await admin.post(`${base}/segments`, {
+      type: 'segment',
+      name: 'Purchase revenue for one visitor',
+      parameters: {
+        filters: [{ name: 'distinctId', operator: 'eq', value: seed.data.distinctIds[0] }],
+      },
+    });
+    expect(segment.status).toBe(200);
+    try {
+      const filtered = await admin.get(`${base}/event-data-pivot/numeric-stats`, {
+        params: { ...params, segment: segment.body.id },
+      });
+      expect(filtered.status).toBe(200);
+      expect(Number(filtered.body.total)).toBeGreaterThan(0);
+      expect(Number(filtered.body.total)).toBeLessThan(PURCHASE_TOTAL);
+    } finally {
+      expect((await admin.del(`${base}/segments/${segment.body.id}`)).status).toBe(200);
+    }
+
     expect(shared.status).toBe(200);
     expect(denied.status).toBe(401);
     expect(missingProperty.status).toBe(400);

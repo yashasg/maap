@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures';
 import { CACHE_HEADER, UNKNOWN_UUID } from './helpers/constants';
+import { createWebsite, deleteWebsite } from './helpers/entities';
 import { HOSTNAME, PERSONAS } from './seed/dataset';
 
 const persona = PERSONAS[0];
@@ -41,10 +42,84 @@ test.describe('Collection', () => {
     const second = await api.post('/api/send', pageview(seed.website.id, { url: '/second' }), {
       headers: { [CACHE_HEADER]: first.body.cache },
     });
-
     expect(second.status).toBe(200);
     expect(second.body.sessionId).toBe(first.body.sessionId);
     expect(second.body.visitId).toBe(first.body.visitId);
+  });
+  test('decoded page paths and titles keep URI and component delimiters distinct', async ({
+    api,
+    admin,
+    seed,
+  }) => {
+    const startAt = Date.now() - 1000;
+    const sent = await api.post(
+      '/api/send',
+      pageview(seed.website.id, {
+        url: '/caf%C3%A9%2Fmenu',
+        title: 'Coffee%20%2F%20Tea',
+      }),
+    );
+    expect(sent.status).toBe(200);
+    for (const [type, label] of [
+      ['path', '/café%2Fmenu'],
+      ['title', 'Coffee / Tea'],
+    ]) {
+      const result = await admin.get(`/api/websites/${seed.website.id}/metrics`, {
+        params: { startAt, endAt: Date.now() + 1000, type, path: '/café%2Fmenu' },
+      });
+      expect(result.status).toBe(200);
+      expect(result.body).toContainEqual({ x: label, y: 1 });
+    }
+  });
+
+  test('charts bucket filtered activity in local time and compare the prior year', async ({
+    api,
+    admin,
+  }) => {
+    const site = await createWebsite(admin);
+    try {
+      for (const [instant, name] of [
+        ['2026-01-02T03:00:00Z', undefined],
+        ['2026-01-03T03:00:00Z', undefined],
+        ['2025-01-02T03:00:00Z', undefined],
+        ['2026-01-02T03:05:00Z', 'navigation'],
+      ] as const) {
+        const sent = await api.post(
+          '/api/send',
+          pageview(site.id, {
+            timestamp: Date.parse(instant) / 1000,
+            url: '/local-time',
+            name,
+          }),
+        );
+        expect(sent.status).toBe(200);
+      }
+      const base = `/api/websites/${site.id}`;
+      const params = {
+        startAt: Date.parse('2026-01-01T00:00:00Z'),
+        endAt: Date.parse('2026-01-08T00:00:00Z'),
+        unit: 'day',
+        timezone: 'America/Los_Angeles',
+        path: '/local-time',
+      };
+      const chart = await admin.get(`${base}/pageviews`, { params: { ...params, compare: 'yoy' } });
+      expect(chart.status, chart.text).toBe(200);
+      expect(chart.body.pageviews).toEqual([
+        { x: '2026-01-01T00:00:00Z', y: 1 },
+        { x: '2026-01-02T00:00:00Z', y: 1 },
+      ]);
+      expect(chart.body.compare.pageviews).toEqual([{ x: '2025-01-01T00:00:00Z', y: 1 }]);
+      const events = await admin.get(`${base}/events/series`, { params });
+      expect(events.status, events.text).toBe(200);
+      expect(events.body).toEqual([{ x: 'navigation', t: '2026-01-01T00:00:00Z', y: 1 }]);
+      const missing = await admin.get(`${base}/pageviews`, {
+        params: { ...params, path: '/other' },
+      });
+      expect(missing.status).toBe(200);
+      expect(missing.body).toEqual({ pageviews: [], sessions: [] });
+    } finally {
+      await deleteWebsite(admin, site.id);
+    }
   });
 
   test('POST /api/send records custom, identify and performance payloads', async ({

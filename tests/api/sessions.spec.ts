@@ -175,6 +175,44 @@ test.describe('Sessions', () => {
     expect(denied.status).toBe(401);
   });
 
+  test('activity includes the other session linked to the same visitor', async ({ api, admin }) => {
+    const site = await createWebsite(admin);
+    try {
+      const endAt = Date.now();
+      const sessions: string[] = [];
+      for (const [index, daysAgo] of [2, 45].entries()) {
+        const payload = {
+          website: site.id,
+          id: 'returning-visitor',
+          ip: `10.2.1.${index + 1}`,
+          userAgent: PERSONAS[0].userAgent,
+          timestamp: Math.floor(endAt / 1000) - daysAgo * 86400,
+        };
+        expect((await api.post('/api/send', { type: 'identify', payload })).status).toBe(200);
+        const sent = await api.post('/api/send', {
+          type: 'event',
+          payload: { ...payload, url: `/visit-${index}` },
+        });
+        expect(sent.status).toBe(200);
+        sessions.push(sent.body.sessionId);
+      }
+      expect(sessions[0]).not.toBe(sessions[1]);
+      const activity = await admin.get(
+        `/api/websites/${site.id}/sessions/${sessions[0]}/activity`,
+        {
+          params: { startAt: endAt - 3 * 86400000, endAt },
+        },
+      );
+      expect(activity.status, activity.text).toBe(200);
+      expect(activity.body.map((event: { urlPath: string }) => event.urlPath)).toEqual([
+        '/visit-0',
+        '/visit-1',
+      ]);
+    } finally {
+      await deleteWebsite(admin, site.id);
+    }
+  });
+
   test('GET /api/websites/{websiteId}/sessions/{sessionId}/properties returns session data', async ({
     admin,
     viewer,

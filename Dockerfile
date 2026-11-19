@@ -6,6 +6,7 @@ ARG PRISMA_VERSION="7.10.0"
 FROM rust:1.100.0-alpine AS rust-builder
 RUN apk add --no-cache musl-dev
 WORKDIR /app/rust
+COPY package.json /app/package.json
 COPY rust/Cargo.toml rust/Cargo.lock ./
 COPY rust/src ./src
 RUN cargo test --locked && cargo build --release --locked

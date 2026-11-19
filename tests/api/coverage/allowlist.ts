@@ -14,15 +14,6 @@ export interface AllowlistEntry {
  */
 export const allowlist: AllowlistEntry[] = [
   {
-    key: 'POST /api/auth/sso',
-    reason:
-      'Cloud single sign-on handoff. Requires REDIS_URL (returns 500 "Redis is disabled" otherwise); Redis is out of scope for the harness.',
-  },
-  {
-    key: 'GET /api/auth/subscription',
-    reason: 'Cloud billing/subscription lookup; only meaningful under CLOUD_MODE.',
-  },
-  {
     key: 'DELETE /api/websites/{websiteId}/sessions/{sessionId}',
     reason: 'Session deletion needs relational storage; sessions.spec.ts skips it on ClickHouse.',
     db: 'clickhouse',

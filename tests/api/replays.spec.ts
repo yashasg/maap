@@ -89,6 +89,18 @@ test.describe('Replays', () => {
 
     expect(searched.status).toBe(200);
     expect(searched.body.data).toHaveLength(0);
+    for (const [filter, expected] of [
+      ['2.eq.seats.5', true],
+      ['2.eq.seats.6', false],
+    ] as const) {
+      const filtered = await admin.get(`${base}/replays`, {
+        params: dateRange(seed, { spf0: filter }),
+      });
+      expect(filtered.status, filtered.text).toBe(200);
+      expect(
+        filtered.body.data.some((row: { id: string }) => row.id === seed.data.replayVisitId),
+      ).toBe(expected);
+    }
 
     expect(shared.status).toBe(401);
     expect(denied.status).toBe(401);
