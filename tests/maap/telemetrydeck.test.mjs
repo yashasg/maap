@@ -4,6 +4,8 @@ import { chmod, copyFile, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { resolveAppIconUrl } from '../../src/app/app-icon/route.ts';
+import { DOMAIN_REGEX } from '../../src/lib/constants.ts';
 import { ingestBatch, mapSignal } from '../../src/lib/telemetrydeck.ts';
 
 const [navigation, action] = JSON.parse(
@@ -265,4 +267,36 @@ test('deploy.sh validates 40-hex SHA tags and updates .env atomically while pres
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('accepts App Store and Google Play URLs in DOMAIN_REGEX and resolves store icons', async () => {
+  for (const valid of [
+    'example.com',
+    'app.ios',
+    'https://apps.apple.com/us/app/xpenshare/id6741827585',
+    'https://apps.apple.com/app/id6741827585?mt=12',
+    'https://play.google.com/store/apps/details?id=com.yashasg.receiptscanner&hl=en_US',
+  ]) {
+    assert.match(valid, DOMAIN_REGEX);
+  }
+
+  const appleIcon = await resolveAppIconUrl(
+    'https://apps.apple.com/us/app/xpenshare/id6741827585',
+    async url => {
+      assert.match(String(url), /itunes\.apple\.com\/lookup\?id=6741827585&country=us/);
+      return Response.json({
+        results: [{ artworkUrl100: 'https://is1-ssl.mzstatic.com/image/thumb/icon100.jpg' }],
+      });
+    },
+  );
+  assert.equal(appleIcon, 'https://is1-ssl.mzstatic.com/image/thumb/icon100.jpg');
+
+  const playIcon = await resolveAppIconUrl(
+    'https://play.google.com/store/apps/details?id=com.yashasg.receiptscanner',
+    async () =>
+      new Response(
+        '<html><head><meta property="og:image" content="https://play-lh.googleusercontent.com/app-icon"></head></html>',
+      ),
+  );
+  assert.equal(playIcon, 'https://play-lh.googleusercontent.com/app-icon');
 });

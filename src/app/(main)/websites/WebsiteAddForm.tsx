@@ -23,6 +23,40 @@ export const PLATFORM_LABELS: Record<string, string> = {
   'app.android': 'Android',
 };
 
+export const PLATFORM_STORE_PLACEHOLDERS: Record<string, string> = {
+  ios: 'https://apps.apple.com/app/id123456789',
+  macos: 'https://apps.apple.com/app/id123456789',
+  android: 'https://play.google.com/store/apps/details?id=com.example.app',
+};
+
+export function detectPlatform(domain?: string): 'ios' | 'macos' | 'android' | 'website' {
+  if (!domain) return 'ios';
+  if (domain === 'app.macos' || /(?:apps|itunes)\.apple\.com\/.*(?:\bmt=12\b|\/mac-app\/)/i.test(domain)) {
+    return 'macos';
+  }
+  if (domain === 'app.ios' || /(?:apps|itunes)\.apple\.com\//i.test(domain)) {
+    return 'ios';
+  }
+  if (domain === 'app.android' || /play\.google\.com\//i.test(domain)) {
+    return 'android';
+  }
+  return 'website';
+}
+
+export function formatPlatformDomain(domain?: string): string | null {
+  if (!domain) return null;
+  if (PLATFORM_LABELS[domain]) return PLATFORM_LABELS[domain];
+  if (/(?:apps|itunes)\.apple\.com\//i.test(domain)) {
+    const id = domain.match(/\/id(\d+)/i)?.[1];
+    return id ? `App Store (id${id})` : 'App Store';
+  }
+  if (/play\.google\.com\//i.test(domain)) {
+    const pkg = domain.match(/[?&]id=([a-zA-Z0-9._]+)/i)?.[1];
+    return pkg ? `Google Play (${pkg})` : 'Google Play';
+  }
+  return null;
+}
+
 export function WebsiteAddForm({
   teamId,
   onSave,
@@ -38,9 +72,10 @@ export function WebsiteAddForm({
   const { mutateAsync, error, isPending } = useUpdateQuery('/websites', { teamId });
 
   const handleSubmit = async ({ platform, name, domain }: any) => {
+    const trimmed = domain?.trim();
     const website = await mutateAsync({
       name,
-      domain: PLATFORM_DOMAINS[platform] ?? domain,
+      domain: trimmed || PLATFORM_DOMAINS[platform] || domain,
     });
 
     await onSave?.(website);
@@ -54,16 +89,17 @@ export function WebsiteAddForm({
     <Form
       onSubmit={handleSubmit}
       error={error?.message}
-      defaultValues={{ name: '', platform: 'ios', domain: 'app.ios' }}
+      defaultValues={{ name: '', platform: 'ios', domain: '' }}
     >
       {({ watch, setValue }) => {
         const platform = watch('platform') || 'ios';
         const isWebsite = platform === 'website';
+        const storeLabel = platform === 'android' ? 'Google Play URL' : 'App Store URL';
 
         const handlePlatformChange = (value: string | number | null) => {
           const next = (value as string) || 'website';
           setValue('platform', next, { shouldDirty: true });
-          setValue('domain', PLATFORM_DOMAINS[next] ?? '', { shouldDirty: true });
+          setValue('domain', '', { shouldDirty: true });
         };
 
         return (
@@ -90,19 +126,20 @@ export function WebsiteAddForm({
               </Select>
             </FormField>
 
-            {isWebsite && (
-              <FormField
-                label={t(labels.domain)}
-                data-test="input-domain"
-                name="domain"
-                rules={{
-                  required: t(labels.required),
-                  pattern: { value: DOMAIN_REGEX, message: t(messages.invalidDomain) },
-                }}
-              >
-                <TextField autoComplete="off" />
-              </FormField>
-            )}
+            <FormField
+              label={isWebsite ? t(labels.domain) : storeLabel}
+              data-test="input-domain"
+              name="domain"
+              rules={{
+                ...(isWebsite ? { required: t(labels.required) } : {}),
+                pattern: { value: DOMAIN_REGEX, message: t(messages.invalidDomain) },
+              }}
+            >
+              <TextField
+                autoComplete="off"
+                placeholder={isWebsite ? 'example.com' : PLATFORM_STORE_PLACEHOLDERS[platform]}
+              />
+            </FormField>
 
             <Row justifyContent="flex-end" paddingTop="3" gap="3">
               {onClose && (

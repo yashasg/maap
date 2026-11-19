@@ -14,6 +14,20 @@ function getHostName(url: string) {
 
 export function Favicon({ domain, ...props }) {
   const config = useConfig();
+
+  if (domain && /(?:apps|itunes)\.apple\.com\/|play\.google\.com\//i.test(domain)) {
+    return (
+      <img
+        src={`/app-icon?url=${encodeURIComponent(domain)}`}
+        width={16}
+        height={16}
+        alt=""
+        style={{ borderRadius: 4, ...props?.style }}
+        {...props}
+      />
+    );
+  }
+
   const hostName = domain ? getHostName(domain) : null;
   const platformIcon = hostName ? PLATFORM_ICONS[hostName] : undefined;
 

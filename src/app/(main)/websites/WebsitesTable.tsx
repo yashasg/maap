@@ -6,7 +6,7 @@ import { SortableLabel } from '@/components/common/SortableLabel';
 import { useMessages, useNavigation, useWebsiteListChartsQuery } from '@/components/hooks';
 import { SquarePen } from '@/components/icons';
 import { decodePunycodeDomain } from '@/lib/format';
-import { PLATFORM_LABELS } from './WebsiteAddForm';
+import { formatPlatformDomain } from './WebsiteAddForm';
 import { WebsiteSparkline } from './WebsiteSparkline';
 
 export interface WebsitesTableProps extends DataTableProps {
@@ -42,9 +42,9 @@ export function WebsitesTable({
         style={{ minWidth: 0 }}
       >
         {(row: any) => {
-          const label = PLATFORM_LABELS[row.domain] ?? decodePunycodeDomain(row.domain);
+          const label = formatPlatformDomain(row.domain) ?? decodePunycodeDomain(row.domain);
           return (
-            <Text truncate title={label ?? undefined} style={{ maxWidth: '100%' }}>
+            <Text truncate title={row.domain ?? undefined} style={{ maxWidth: '100%' }}>
               {label}
             </Text>
           );
