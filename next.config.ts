@@ -228,6 +228,7 @@ export default withNextIntl({
     ignoreBuildErrors: true,
   },
   experimental: {
+    agentUpgrade: 'security',
     useTypeScriptCli: true,
   },
   async headers() {

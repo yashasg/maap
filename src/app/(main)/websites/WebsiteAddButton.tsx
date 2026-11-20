@@ -7,7 +7,15 @@ import { DialogButton } from '@/components/input/DialogButton';
 import { WebsiteTrackingCode } from './[websiteId]/settings/WebsiteTrackingCode';
 import { WebsiteAddForm } from './WebsiteAddForm';
 
-export function WebsiteAddButton({ teamId, onSave }: { teamId: string; onSave?: () => void }) {
+export function WebsiteAddButton({
+  teamId,
+  onSave,
+  label,
+}: {
+  teamId: string;
+  onSave?: () => void;
+  label?: string;
+}) {
   const { t, labels, messages } = useMessages();
   const { toast } = useToast();
   const { touch } = useModified();
@@ -38,17 +46,20 @@ export function WebsiteAddButton({ teamId, onSave }: { teamId: string; onSave?: 
   return (
     <>
       <Button onPress={() => handleOpenChange(true)} variant="primary">
-        <IconLabel icon={<Plus />} label={t(labels.addWebsite)} />
+        <IconLabel icon={<Plus />} label={label || t(labels.addWebsite)} />
       </Button>
       <DialogButton
-        title={createdWebsite ? t(labels.trackingCode) : t(labels.addWebsite)}
+        title={createdWebsite ? t(labels.trackingCode) : label || t(labels.addWebsite)}
         width={createdWebsite ? '720px' : '400px'}
         isOpen={isOpen}
         onOpenChange={handleOpenChange}
       >
         {({ close }) =>
           createdWebsite ? (
-            <TrackingCodeStep websiteId={createdWebsite.id} onClose={() => handleOpenChange(false)} />
+            <TrackingCodeStep
+              websiteId={createdWebsite.id}
+              onClose={() => handleOpenChange(false)}
+            />
           ) : (
             <WebsiteAddForm
               teamId={teamId}

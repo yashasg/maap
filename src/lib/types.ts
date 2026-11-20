@@ -146,6 +146,7 @@ export interface QueryFilters
 export interface DateParams {
   startDate?: Date;
   endDate?: Date;
+  minimumDate?: Date;
   unit?: string;
   timezone?: string;
   compareDate?: Date;

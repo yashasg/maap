@@ -1,13 +1,13 @@
 import { expect, type Page, test } from '@playwright/test';
 import { addWebsite, deleteWebsite, loginPage } from './helpers';
 
-function websiteRow(page: Page, name: string) {
-  return page.getByRole('row').filter({ hasText: name });
+function websiteCard(page: Page, name: string) {
+  return page.getByTestId('website-card').filter({ hasText: name });
 }
 
-// Opens the website's settings page from its row and returns the website ID from the URL.
+// Opens the website's settings page from its card and returns the website ID from the URL.
 async function openSettings(page: Page, name: string) {
-  await websiteRow(page, name).getByTestId('link-button-edit').click();
+  await websiteCard(page, name).getByTestId('link-button-edit').click();
   await expect(page).toHaveURL(/\/websites\/[^/]+\/settings$/);
 
   return new URL(page.url()).pathname.split('/')[2];
@@ -18,16 +18,16 @@ test.describe('Website tests', () => {
     const auth = await loginPage(page, request);
 
     await page.goto('/websites');
-    await page.getByRole('button', { name: /Add website/i }).click();
+    await page.getByRole('button', { name: /Create new app or website/i }).click();
 
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText(/Add website/i)).toBeVisible();
+    await expect(dialog.getByText(/Create new app or website/i)).toBeVisible();
     await dialog.getByTestId('input-name').locator('input').fill('Add test');
     await dialog.getByTestId('input-domain').locator('input').fill('addtest.com');
     await dialog.getByTestId('button-submit').click();
 
-    const row = websiteRow(page, 'Add test');
-    await expect(row).toContainText('addtest.com');
+    const card = websiteCard(page, 'Add test');
+    await expect(card).toContainText('addtest.com');
 
     const websiteId = await openSettings(page, 'Add test');
 
@@ -58,6 +58,40 @@ test.describe('Website tests', () => {
     await deleteWebsite(request, auth, websiteId);
     await page.goto('/websites');
     await expect(page.getByText(/Updated website/i)).toHaveCount(0);
+  });
+
+  test('creates a folder and moves a website in and out', async ({ page, request }) => {
+    const auth = await loginPage(page, request);
+    const folderName = `Release apps ${Date.now()}`;
+
+    await addWebsite(request, auth, 'Folder test', 'foldertest.com');
+    await page.goto('/websites');
+    await page.getByRole('button', { name: 'New folder' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Folder name').fill(folderName);
+    await dialog.getByRole('button', { name: 'Create folder' }).click();
+
+    const card = websiteCard(page, 'Folder test');
+    await card.getByRole('combobox', { name: /Move Folder test to folder/i }).selectOption({
+      label: folderName,
+    });
+
+    const folder = page.locator('details').filter({ hasText: folderName });
+    await expect(
+      folder.locator('[data-test="website-card"]').filter({ hasText: 'Folder test' }),
+    ).toBeVisible();
+    await folder.locator('summary').click();
+    await expect(
+      folder.locator('[data-test="website-card"]').filter({ hasText: 'Folder test' }),
+    ).not.toBeVisible();
+    await folder.locator('summary').click();
+    await folder
+      .getByRole('combobox', { name: /Move Folder test to folder/i })
+      .selectOption({ label: 'Unfiled' });
+
+    const websiteId = await openSettings(page, 'Folder test');
+    await deleteWebsite(request, auth, websiteId);
   });
 
   test('deletes a website', async ({ page, request }) => {

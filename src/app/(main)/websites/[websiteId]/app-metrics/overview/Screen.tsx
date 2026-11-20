@@ -1,0 +1,386 @@
+'use client';
+
+import { Button, Heading, Icon, Text } from '@umami/react-zen';
+import { type CSSProperties, useMemo, useState } from 'react';
+import { LoadingPanel } from '@/components/common/LoadingPanel';
+import { Panel } from '@/components/common/Panel';
+import { useAnalyticsQuery } from '@/components/hooks/queries/useAnalyticsQuery';
+import { useAppSettingsQuery } from '@/components/hooks/queries/useAppSettingsQuery';
+import { RefreshCw } from '@/components/icons';
+import { APP_COLOR_PALETTES, DEFAULT_APP_SETTINGS } from '@/lib/app-settings';
+import { formatLongNumber } from '@/lib/format';
+import styles from './Overview.module.css';
+
+interface BreakdownValue {
+  value: string;
+  users: number;
+}
+
+interface AppOverviewData {
+  identity: 'clientUser';
+  range: {
+    startAt: string;
+    endAt: string;
+    timezone: string;
+  };
+  summary: {
+    users: number;
+    usersLastHour: number;
+    events: number;
+    errors: number | null;
+    mostUsedSdk: string | null;
+  };
+  dailyUsers: Array<{ x: string; y: number }>;
+  retention: Array<{
+    day: number;
+    eligibleUsers: number;
+    returningUsers: number;
+    percentage: number | null;
+  }>;
+  dimensions: {
+    sdkName: BreakdownValue[];
+    sdkVersion: BreakdownValue[];
+    appVersion: BreakdownValue[];
+    buildNumber: BreakdownValue[];
+    systemVersion: BreakdownValue[];
+  };
+}
+
+function formatDate(value: string) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function DailyUsersChart({ values }: { values: Array<{ x: string; y: number }> }) {
+  const width = 1000;
+  const height = 260;
+  const padding = { top: 20, right: 20, bottom: 42, left: 48 };
+  const max = Math.max(1, ...values.map(value => value.y));
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const yTicks = Array.from(new Set([0, 0.25, 0.5, 0.75, 1].map(ratio => Math.round(max * ratio))));
+  const points = values.map((value, index) => ({
+    ...value,
+    px:
+      padding.left +
+      (values.length <= 1 ? chartWidth / 2 : (index / (values.length - 1)) * chartWidth),
+    py: padding.top + chartHeight - (value.y / max) * chartHeight,
+  }));
+  const line = points.map(({ px, py }, index) => `${index ? 'L' : 'M'} ${px} ${py}`).join(' ');
+  const area = points.length
+    ? `${line} L ${points.at(-1)?.px} ${padding.top + chartHeight} L ${points[0].px} ${padding.top + chartHeight} Z`
+    : '';
+  const labelIndexes = Array.from(
+    new Set([0, Math.floor((values.length - 1) / 2), values.length - 1]),
+  ).filter(index => index >= 0);
+
+  return (
+    <div className={styles.chart}>
+      <svg
+        role="img"
+        aria-label="Daily active identified users"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+      >
+        {yTicks.map(tick => {
+          const y = padding.top + chartHeight - (tick / max) * chartHeight;
+          return (
+            <g key={tick}>
+              <line
+                className={styles.gridLine}
+                x1={padding.left}
+                x2={width - padding.right}
+                y1={y}
+                y2={y}
+              />
+              <text className={styles.axisLabel} x={padding.left - 10} y={y + 4} textAnchor="end">
+                {formatLongNumber(tick)}
+              </text>
+            </g>
+          );
+        })}
+        {area && <path className={styles.area} d={area} />}
+        {line && <path className={styles.line} d={line} />}
+        {points.map(point => (
+          <circle key={point.x} className={styles.point} cx={point.px} cy={point.py} r="3">
+            <title>
+              {formatDate(point.x)}: {formatLongNumber(point.y)}
+            </title>
+          </circle>
+        ))}
+        {labelIndexes.map(index => {
+          const point = points[index];
+          if (!point) return null;
+          return (
+            <text
+              key={point.x}
+              className={styles.axisLabel}
+              x={point.px}
+              y={height - 12}
+              textAnchor={index === 0 ? 'start' : index === values.length - 1 ? 'end' : 'middle'}
+            >
+              {formatDate(point.x)}
+            </text>
+          );
+        })}
+      </svg>
+      {!values.some(value => value.y > 0) && (
+        <div className={styles.chartEmpty}>No identified-user activity in this period</div>
+      )}
+    </div>
+  );
+}
+
+function Fact({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div className={styles.fact}>
+      <span className={styles.factLabel}>{label}</span>
+      <strong className={styles.factValue}>{value}</strong>
+      {detail && <span className={styles.factDetail}>{detail}</span>}
+    </div>
+  );
+}
+
+function SegmentedControl({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+  label: string;
+}) {
+  return (
+    <div className={styles.segmented} aria-label={label}>
+      {options.map(option => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Breakdown({ values, total }: { values: BreakdownValue[]; total: number }) {
+  if (!values.length || total === 0) {
+    return <div className={styles.empty}>No identified-user data for this period</div>;
+  }
+
+  return (
+    <div className={styles.breakdown}>
+      {values.slice(0, 5).map(item => {
+        const percentage = (item.users / total) * 100;
+        return (
+          <div className={styles.breakdownRow} key={item.value}>
+            <div className={styles.breakdownLabel}>
+              <span title={item.value}>{item.value}</span>
+              <strong>
+                {formatLongNumber(item.users)} · {percentage.toFixed(1)}%
+              </strong>
+            </div>
+            <div className={styles.track}>
+              <span style={{ width: `${percentage}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function systemVersionLabel(value: string, mode: 'major' | 'minor') {
+  if (value === 'Unknown') return value;
+  const match = value.match(/^(.*?)(\d+)(?:\.(\d+))?/);
+  if (!match) return value;
+  const platform = match[1].trim();
+  const version = mode === 'minor' && match[3] ? `${match[2]}.${match[3]}` : match[2];
+  return `${platform} ${version}`.trim();
+}
+
+function aggregateSystemVersions(values: BreakdownValue[], mode: 'major' | 'minor') {
+  const totals = new Map<string, number>();
+  for (const item of values) {
+    const label = systemVersionLabel(item.value, mode);
+    totals.set(label, (totals.get(label) ?? 0) + item.users);
+  }
+  return [...totals.entries()]
+    .map(([value, users]) => ({ value, users }))
+    .sort((a, b) => b.users - a.users || a.value.localeCompare(b.value));
+}
+
+export default function Screen({ websiteId }: { websiteId: string }) {
+  const query = useAnalyticsQuery<AppOverviewData>(
+    'app-reports/overview',
+    { websiteId },
+    { staleTime: 60_000 },
+  );
+  const settingsQuery = useAppSettingsQuery(websiteId, { staleTime: 60_000 });
+  const [appMode, setAppMode] = useState<'versions' | 'builds'>('versions');
+  const [systemMode, setSystemMode] = useState<'major' | 'minor'>('major');
+  const data = query.data;
+  const settings = settingsQuery.data ?? DEFAULT_APP_SETTINGS;
+  const palette = APP_COLOR_PALETTES[settings.colorScheme];
+  const systemVersions = useMemo(
+    () => aggregateSystemVersions(data?.dimensions.systemVersion ?? [], systemMode),
+    [data?.dimensions.systemVersion, systemMode],
+  );
+
+  return (
+    <section
+      className={`${styles.screen} ${
+        settings.overviewLayout === 'website' ? styles.websiteLayout : ''
+      }`}
+      style={
+        {
+          '--overview-accent': palette[0],
+          '--overview-accent-soft': palette[1] ?? palette[0],
+        } as CSSProperties
+      }
+      data-overview-layout={settings.overviewLayout}
+      data-color-scheme={settings.colorScheme}
+      aria-label="Overview"
+    >
+      <LoadingPanel
+        data={data}
+        error={query.error ?? settingsQuery.error}
+        isLoading={query.isLoading || settingsQuery.isLoading}
+        isFetching={
+          (query.isFetching && !data) || (settingsQuery.isFetching && !settingsQuery.data)
+        }
+        minHeight="32rem"
+      >
+        {data && (
+          <>
+            <Panel className={styles.dailyPanel}>
+              <div className={styles.panelHeading}>
+                <div>
+                  <Heading size="base">Daily Active Users</Heading>
+                  <Text color="muted" size="sm">
+                    Distinct SDK identities active per calendar day in {data.range.timezone}
+                  </Text>
+                </div>
+                <Text color="muted" size="sm">
+                  {formatDate(data.dailyUsers[0]?.x ?? '')} –{' '}
+                  {formatDate(data.dailyUsers.at(-1)?.x ?? '')}
+                </Text>
+              </div>
+              <DailyUsersChart values={data.dailyUsers} />
+              <Button
+                size="sm"
+                variant="quiet"
+                aria-label="Refresh overview"
+                style={{ alignSelf: 'flex-start' }}
+                isDisabled={query.isFetching}
+                onPress={() => query.refetch()}
+              >
+                <Icon>
+                  <RefreshCw />
+                </Icon>
+                Refresh
+              </Button>
+            </Panel>
+
+            <div className={styles.metricStrip}>
+              <Fact
+                label="Identified users in the last hour"
+                value={formatLongNumber(data.summary.usersLastHour)}
+                detail="Rolling 60 minutes"
+              />
+              <Fact
+                label="Total identified users"
+                value={formatLongNumber(data.summary.users)}
+                detail="Selected range"
+              />
+              <Fact
+                label="Events"
+                value={formatLongNumber(data.summary.events)}
+                detail="Selected range"
+              />
+            </div>
+
+            <div className={styles.detailGrid}>
+              <Panel className={styles.detailPanel}>
+                <div className={styles.panelHeading}>
+                  <div>
+                    <Heading size="base">User Retention</Heading>
+                    <Text color="muted" size="sm">
+                      New identified users returning on the exact day
+                    </Text>
+                  </div>
+                </div>
+                <div className={styles.retention}>
+                  {data.retention.map(item => (
+                    <div className={styles.retentionRow} key={item.day}>
+                      <span>Day {item.day}</span>
+                      <div className={styles.track}>
+                        <span style={{ width: `${item.percentage ?? 0}%` }} />
+                      </div>
+                      <strong>
+                        {item.percentage == null ? '—' : `${item.percentage.toFixed(1)}%`}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+                {!data.retention.some(item => item.eligibleUsers > 0) && (
+                  <div className={styles.empty}>
+                    The selected range has no identified-user cohort old enough to measure.
+                  </div>
+                )}
+              </Panel>
+
+              <Panel className={styles.detailPanel}>
+                <div className={styles.panelHeading}>
+                  <Heading size="base">App Versions</Heading>
+                  <SegmentedControl
+                    label="App version grouping"
+                    value={appMode}
+                    options={[
+                      { value: 'versions', label: 'Versions' },
+                      { value: 'builds', label: 'Builds' },
+                    ]}
+                    onChange={value => setAppMode(value as 'versions' | 'builds')}
+                  />
+                </div>
+                <Breakdown
+                  total={data.summary.users}
+                  values={
+                    appMode === 'versions'
+                      ? data.dimensions.appVersion
+                      : data.dimensions.buildNumber
+                  }
+                />
+              </Panel>
+
+              <Panel className={styles.detailPanel}>
+                <div className={styles.panelHeading}>
+                  <Heading size="base">System Versions</Heading>
+                  <SegmentedControl
+                    label="System version grouping"
+                    value={systemMode}
+                    options={[
+                      { value: 'major', label: 'Major' },
+                      { value: 'minor', label: 'Minor' },
+                    ]}
+                    onChange={value => setSystemMode(value as 'major' | 'minor')}
+                  />
+                </div>
+                <Breakdown total={data.summary.users} values={systemVersions} />
+              </Panel>
+            </div>
+          </>
+        )}
+      </LoadingPanel>
+    </section>
+  );
+}

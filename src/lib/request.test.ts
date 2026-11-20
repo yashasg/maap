@@ -1,8 +1,13 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { checkAuth } from '@/lib/auth';
-import { fetchWebsite } from '@/lib/load';
+import { fetchAccount, fetchWebsite } from '@/lib/load';
 import { getWebsiteSegment } from '@/queries/prisma';
-import { getQueryFilters, parseRequest, resolvePeriodDateRange } from './request';
+import {
+  getQueryFilters,
+  getWebsiteDateFloor,
+  parseRequest,
+  resolvePeriodDateRange,
+} from './request';
 
 vi.hoisted(() => {
   process.env.DATABASE_URL ??= 'postgresql://user:pass@localhost:5432/umami?schema=public';
@@ -23,14 +28,69 @@ vi.mock('@/queries/prisma', () => ({
 }));
 
 const checkAuthMock = vi.mocked(checkAuth);
+const fetchAccountMock = vi.mocked(fetchAccount);
 const fetchWebsiteMock = vi.mocked(fetchWebsite);
 const getWebsiteSegmentMock = vi.mocked(getWebsiteSegment);
 
 beforeEach(() => {
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
   checkAuthMock.mockReset();
+  fetchAccountMock.mockReset();
   fetchWebsiteMock.mockReset();
   getWebsiteSegmentMock.mockReset();
   fetchWebsiteMock.mockResolvedValue({ id: 'website-1' } as any);
+});
+
+test('uses the later Cloud subscription or reset floor without using the selected display start', async () => {
+  vi.stubEnv('CLOUD_MODE', '1');
+  fetchAccountMock.mockResolvedValue({ hasSubscription: false } as any);
+  fetchWebsiteMock.mockResolvedValue({
+    id: 'website-1',
+    userId: 'user-1',
+    teamId: null,
+    resetAt: new Date('2026-06-15T12:00:00.000Z'),
+  } as any);
+
+  const minimumDate = await getWebsiteDateFloor('website-1', new Date('2026-11-20T12:00:00.000Z'));
+  const filters = await getQueryFilters(
+    {
+      startAt: String(+new Date('2026-11-01T00:00:00.000Z')),
+      endAt: String(+new Date('2026-11-20T00:00:00.000Z')),
+    },
+    'website-1',
+  );
+
+  expect(minimumDate).toEqual(new Date('2026-06-15T12:00:00.000Z'));
+  expect(filters.minimumDate).toEqual(expect.any(Date));
+  expect(filters.startDate).toEqual(new Date('2026-11-01T00:00:00.000Z'));
+  expect(filters.minimumDate.getTime()).toBeLessThan(filters.startDate.getTime());
+});
+
+test('clamps a wholly disallowed range past its end while retaining the policy floor', async () => {
+  vi.stubEnv('CLOUD_MODE', '1');
+  fetchAccountMock.mockResolvedValue({ hasSubscription: false } as any);
+  fetchWebsiteMock.mockResolvedValue({
+    id: 'website-1',
+    userId: 'user-1',
+    teamId: null,
+    resetAt: null,
+  } as any);
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-11-20T12:00:00.000Z'));
+
+  const filters = await getQueryFilters(
+    {
+      startAt: String(+new Date('2026-01-01T00:00:00.000Z')),
+      endAt: String(+new Date('2026-04-30T23:59:59.999Z')),
+    },
+    'website-1',
+  );
+
+  expect(filters.minimumDate).toEqual(new Date('2026-05-01T07:00:00.000Z'));
+  expect(filters.startDate).toEqual(filters.minimumDate);
+  expect(filters.startDate.getTime()).toBeGreaterThan(filters.endDate.getTime());
+  vi.useRealTimers();
 });
 
 test('leaves explicit date parameters unchanged when period is omitted', () => {

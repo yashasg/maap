@@ -1,0 +1,263 @@
+.screen {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.metricStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.5rem;
+  background: var(--zen-surface);
+}
+
+.fact {
+  display: grid;
+  align-content: center;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 1.25rem;
+}
+
+.fact + .fact {
+  border-left: 1px solid var(--zen-border);
+}
+
+.factLabel,
+.factDetail,
+.axisLabel {
+  color: var(--zen-fg-muted);
+}
+
+.factLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.factValue {
+  overflow: hidden;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.factDetail {
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dailyPanel {
+  min-height: 20rem;
+}
+
+.panelHeading,
+.breakdownLabel,
+.retentionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.chart {
+  position: relative;
+  min-height: 14rem;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: 14rem;
+  overflow: visible;
+}
+
+.gridLine {
+  stroke: var(--zen-border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.axisLabel {
+  fill: var(--zen-fg-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.area {
+  fill: color-mix(in srgb, var(--overview-accent) 14%, transparent);
+}
+
+.line {
+  fill: none;
+  stroke: var(--overview-accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.point {
+  fill: var(--zen-surface);
+  stroke: var(--overview-accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartEmpty,
+.empty {
+  color: var(--zen-fg-muted);
+  text-align: center;
+}
+
+.chartEmpty {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.detailPanel {
+  min-height: 19rem;
+}
+
+.segmented {
+  display: inline-flex;
+  flex: none;
+  padding: 0.1875rem;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.375rem;
+  background: var(--zen-surface-sunken);
+}
+
+.segmented button {
+  min-height: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  color: var(--zen-fg-muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.segmented button[aria-pressed="true"] {
+  color: var(--zen-fg);
+  background: var(--zen-surface);
+  box-shadow: 0 0 0 1px var(--zen-border);
+}
+
+.segmented button:focus-visible {
+  outline: 2px solid var(--zen-focus-ring, var(--zen-primary));
+  outline-offset: 1px;
+}
+
+.breakdown,
+.retention {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-height: 11rem;
+}
+
+.breakdownRow {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.breakdownLabel span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breakdownLabel strong,
+.retentionRow strong {
+  flex: none;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--zen-surface-sunken);
+}
+
+.track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--overview-accent);
+}
+
+.retentionRow {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(5rem, 1fr) 3.25rem;
+}
+
+.retentionRow strong {
+  text-align: right;
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 8rem;
+  padding: 1rem;
+  line-height: 1.5;
+}
+
+.websiteLayout .dailyPanel {
+  border-top: 3px solid var(--overview-accent);
+}
+
+.websiteLayout .detailGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.websiteLayout .detailPanel:first-child {
+  grid-column: 1 / -1;
+  min-height: 15rem;
+}
+
+@media (max-width: 1000px) {
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailPanel {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .metricStrip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fact + .fact {
+    border-top: 1px solid var(--zen-border);
+    border-left: 0;
+  }
+
+  .panelHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

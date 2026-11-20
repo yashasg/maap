@@ -1,0 +1,26 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.workspaceExpanded {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+:global([data-theme="dark"]) .error {
+  color: #fca5a5;
+}
+
+@media (max-width: 700px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

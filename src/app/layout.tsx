@@ -1,18 +1,11 @@
 import { FlagValues as FlagValuesScript } from 'flags/react';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import { Suspense } from 'react';
 import { getConfig } from '@/lib/config';
 import { getDefaultFlagValues } from '@/lib/flags';
 import { Providers } from './Providers';
 import '@umami/react-zen/styles.full.css';
 import './global.css';
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-});
 
 export default function ({ children }) {
   if (process.env.DISABLE_UI) {
@@ -27,8 +20,9 @@ export default function ({ children }) {
   const flags = getDefaultFlagValues();
 
   return (
-    <html lang="en" className={`${inter.className} ${inter.variable}`}>
+    <html lang="en">
       <head>
+        <link rel="stylesheet" href={`${process.env.basePath || ''}/fonts/satoshi.css`} />
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
