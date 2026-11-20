@@ -114,4 +114,7 @@ EXPOSE 3000
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
+HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=10 \
+  CMD ["sh", "/app/scripts/container-health.sh"]
+
 CMD ["sh", "scripts/start-docker.sh"]

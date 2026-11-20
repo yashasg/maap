@@ -48,7 +48,8 @@ services:
     networks: [database, edge]
     init: true
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "--max-time", "4", "http://127.0.0.1:3000/api/heartbeat"]
+      # Keep the heartbeat probe when rolling back to an older image without diagnostics.
+      test: ["CMD-SHELL", "if [ -r /app/scripts/container-health.sh ]; then exec sh /app/scripts/container-health.sh; else exec curl -fsS --max-time 4 http://127.0.0.1:3000/api/heartbeat; fi"]
       start_period: 90s
       interval: 15s
       timeout: 5s
