@@ -1,0 +1,86 @@
+.screen {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.intro {
+  max-width: 46rem;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.panel {
+  min-height: 20rem;
+}
+
+.panel:last-child {
+  grid-column: 1 / 2;
+}
+
+.list {
+  display: grid;
+  gap: 1rem;
+  overflow: auto;
+  max-height: 22rem;
+  padding: 0.125rem;
+}
+
+.row {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.rowHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  color: var(--zen-fg-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.track {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--zen-surface-sunken);
+}
+
+.bar {
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--zen-primary);
+}
+
+.footer {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--zen-border);
+}
+
+@media (max-width: 900px) {
+  .panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panel:last-child {
+    grid-column: auto;
+  }
+}

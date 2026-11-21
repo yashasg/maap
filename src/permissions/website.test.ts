@@ -50,7 +50,7 @@ vi.mock('@/lib/auth', async () => {
   const { ROLE_PERMISSIONS } = await import('@/lib/constants');
 
   return {
-    hasPermission: (role: string, permission: string | string[]) =>
+    hasPermission: async (role: string, permission: string | string[]) =>
       (Array.isArray(permission) ? permission : [permission]).some(p =>
         ROLE_PERMISSIONS[role]?.includes(p),
       ),
@@ -73,24 +73,40 @@ beforeEach(() => {
 });
 
 describe('canViewWebsite', () => {
-  test('allows admins without any lookup', async () => {
+  test('allows admins only for a live entity', async () => {
+    vi.mocked(getEntity).mockResolvedValue({ id: 'website-1', deletedAt: null } as any);
     await expect(canViewWebsite({ user: adminUser }, 'website-1')).resolves.toBe(true);
-    expect(getEntity).not.toHaveBeenCalled();
+    expect(getEntity).toHaveBeenCalledWith('website-1');
+  });
+
+  test('denies admins when the entity is missing or soft-deleted', async () => {
+    vi.mocked(getEntity)
+      .mockResolvedValueOnce(null as any)
+      .mockResolvedValueOnce({
+        id: 'website-1',
+        deletedAt: new Date(),
+      } as any);
+
+    await expect(canViewWebsite({ user: adminUser }, 'website-1')).resolves.toBe(false);
+    await expect(canViewWebsite({ user: adminUser }, 'website-1')).resolves.toBe(false);
   });
 
   test('allows a matching single share token id', async () => {
+    vi.mocked(getEntity).mockResolvedValue({ userId: 'user-1', deletedAt: null } as any);
     await expect(
       canViewWebsite({ shareToken: { websiteId: 'website-1' } as any }, 'website-1'),
     ).resolves.toBe(true);
   });
 
   test('allows a website id present in share token list ids', async () => {
+    vi.mocked(getEntity).mockResolvedValue({ userId: 'user-1', deletedAt: null } as any);
     await expect(
       canViewWebsite({ shareToken: { websiteIds: ['website-1'] } as any }, 'website-1'),
     ).resolves.toBe(true);
   });
 
   test('allows a pixel share token to view the matching id', async () => {
+    vi.mocked(getEntity).mockResolvedValue({ userId: 'user-1', deletedAt: null } as any);
     await expect(
       canViewWebsite({ shareToken: { pixelId: 'website-1' } as any }, 'website-1'),
     ).resolves.toBe(true);
@@ -179,9 +195,7 @@ describe('canViewBatchWebsites', () => {
   });
 
   test('excludes team websites when the user is not a team member', async () => {
-    websiteFindManyMock.mockResolvedValue([
-      { id: 'team', userId: null, teamId: 'team-1' },
-    ] as any);
+    websiteFindManyMock.mockResolvedValue([{ id: 'team', userId: null, teamId: 'team-1' }] as any);
     teamUserFindManyMock.mockResolvedValue([] as any);
 
     await expect(canViewBatchWebsites({ user: normalUser }, ['team'])).resolves.toEqual([]);
@@ -225,13 +239,20 @@ describe('canUpdateWebsite', () => {
     await expect(canUpdateWebsite({}, 'website-1')).resolves.toBe(false);
   });
 
-  test('allows admins', async () => {
+  test('allows admins for a live website', async () => {
+    vi.mocked(getWebsite).mockResolvedValue({ id: 'website-1', deletedAt: null } as any);
     await expect(canUpdateWebsite({ user: adminUser }, 'website-1')).resolves.toBe(true);
   });
 
-  test('denies when website is missing', async () => {
-    vi.mocked(getWebsite).mockResolvedValue(null as any);
+  test('denies when website is missing or soft-deleted', async () => {
+    vi.mocked(getWebsite)
+      .mockResolvedValueOnce(null as any)
+      .mockResolvedValueOnce({
+        id: 'website-1',
+        deletedAt: new Date(),
+      } as any);
     await expect(canUpdateWebsite({ user: normalUser }, 'website-1')).resolves.toBe(false);
+    await expect(canUpdateWebsite({ user: adminUser }, 'website-1')).resolves.toBe(false);
   });
 
   test('allows the owner of a user-owned website', async () => {
@@ -242,6 +263,11 @@ describe('canUpdateWebsite', () => {
   test('denies a non-owner of a user-owned website', async () => {
     vi.mocked(getWebsite).mockResolvedValue({ userId: 'other' } as any);
     await expect(canUpdateWebsite({ user: normalUser }, 'website-1')).resolves.toBe(false);
+  });
+
+  test('denies a global view-only user even when they own the website', async () => {
+    vi.mocked(getWebsite).mockResolvedValue({ userId: 'user-2' } as any);
+    await expect(canUpdateWebsite({ user: viewOnlyUser }, 'website-1')).resolves.toBe(false);
   });
 
   test('allows a team member with website:update permission', async () => {
@@ -255,6 +281,12 @@ describe('canUpdateWebsite', () => {
     vi.mocked(getTeamUser).mockResolvedValue({ role: 'team-view-only' } as any);
     await expect(canUpdateWebsite({ user: normalUser }, 'website-1')).resolves.toBe(false);
   });
+
+  test('denies a global view-only user even with a writable team role', async () => {
+    vi.mocked(getWebsite).mockResolvedValue({ teamId: 'team-1' } as any);
+    vi.mocked(getTeamUser).mockResolvedValue({ role: 'team-member' } as any);
+    await expect(canUpdateWebsite({ user: viewOnlyUser }, 'website-1')).resolves.toBe(false);
+  });
 });
 
 describe('canDeleteWebsite', () => {
@@ -262,13 +294,20 @@ describe('canDeleteWebsite', () => {
     await expect(canDeleteWebsite({}, 'website-1')).resolves.toBe(false);
   });
 
-  test('allows admins', async () => {
+  test('allows admins for a live website', async () => {
+    vi.mocked(getWebsite).mockResolvedValue({ id: 'website-1', deletedAt: null } as any);
     await expect(canDeleteWebsite({ user: adminUser }, 'website-1')).resolves.toBe(true);
   });
 
-  test('denies when website is missing', async () => {
-    vi.mocked(getWebsite).mockResolvedValue(null as any);
+  test('denies when website is missing or soft-deleted', async () => {
+    vi.mocked(getWebsite)
+      .mockResolvedValueOnce(null as any)
+      .mockResolvedValueOnce({
+        id: 'website-1',
+        deletedAt: new Date(),
+      } as any);
     await expect(canDeleteWebsite({ user: normalUser }, 'website-1')).resolves.toBe(false);
+    await expect(canDeleteWebsite({ user: adminUser }, 'website-1')).resolves.toBe(false);
   });
 
   test('allows the owner of a user-owned website', async () => {
@@ -280,6 +319,11 @@ describe('canDeleteWebsite', () => {
     vi.mocked(getWebsite).mockResolvedValue({ teamId: 'team-1' } as any);
     vi.mocked(getTeamUser).mockResolvedValue({ role: 'team-member' } as any);
     await expect(canDeleteWebsite({ user: normalUser }, 'website-1')).resolves.toBe(true);
+  });
+
+  test('denies a global view-only user even when they own the website', async () => {
+    vi.mocked(getWebsite).mockResolvedValue({ userId: 'user-2' } as any);
+    await expect(canDeleteWebsite({ user: viewOnlyUser }, 'website-1')).resolves.toBe(false);
   });
 
   test('denies a team-view-only member', async () => {

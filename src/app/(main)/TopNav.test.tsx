@@ -3,7 +3,9 @@ import { render, screen } from '@/test/render';
 import { TopNav } from './TopNav';
 
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 const mockRenderUrl = vi.fn((path: string) => path);
+const mockUpdateParams = vi.fn(() => '/websites?search=alpha');
 const mockUseNavigation = vi.fn();
 const mockWebsiteSelectProps = vi.fn();
 
@@ -36,6 +38,14 @@ vi.mock('@/components/input/WebsiteSelect', () => ({
   },
 }));
 
+vi.mock('@/components/input/UserButton', () => ({
+  UserButton: () => <button type="button">Account</button>,
+}));
+
+vi.mock('@/components/svg', () => ({
+  Logo: () => <svg aria-label="logo" />,
+}));
+
 vi.mock('@/components/input/LinkSelect', () => ({
   LinkSelect: () => null,
 }));
@@ -50,7 +60,9 @@ vi.mock('@/components/input/BoardSelect', () => ({
 
 beforeEach(() => {
   mockPush.mockReset();
+  mockReplace.mockReset();
   mockRenderUrl.mockClear();
+  mockUpdateParams.mockClear();
   mockWebsiteSelectProps.mockClear();
   mockUseNavigation.mockReturnValue({
     websiteId: 'website-1',
@@ -60,7 +72,10 @@ beforeEach(() => {
     teamId: undefined,
     router: {
       push: mockPush,
+      replace: mockReplace,
     },
+    query: {},
+    updateParams: mockUpdateParams,
     renderUrl: mockRenderUrl,
   });
 });
@@ -102,4 +117,17 @@ test('lists only the selected team websites inside a team', () => {
   expect(mockWebsiteSelectProps).toHaveBeenLastCalledWith(
     expect.objectContaining({ teamId: 'team-1', includeTeams: false }),
   );
+});
+
+test('shows app picker and updates search on the workspace home', async () => {
+  const { user } = render(<TopNav workspaceHome />);
+
+  expect(mockWebsiteSelectProps).toHaveBeenLastCalledWith(
+    expect.objectContaining({ placeholder: 'Select an app' }),
+  );
+
+  await user.type(screen.getByRole('searchbox', { name: 'Search apps' }), 'a');
+
+  expect(mockUpdateParams).toHaveBeenLastCalledWith({ search: 'a', page: undefined });
+  expect(mockReplace).toHaveBeenCalledWith('/websites?search=alpha');
 });

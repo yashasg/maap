@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { WebsitePage } from './WebsitePage';
+import { PropertyHome } from './app-metrics/AppReportPage';
 
 export default async function ({ params }: { params: Promise<{ websiteId: string }> }) {
   const { websiteId } = await params;
 
-  return <WebsitePage websiteId={websiteId} />;
+  return <PropertyHome websiteId={websiteId} />;
 }
 
 export const metadata: Metadata = {

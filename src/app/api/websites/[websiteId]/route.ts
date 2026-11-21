@@ -28,6 +28,14 @@ export async function GET(
   const { websiteId } = await params;
 
   if (!(await canViewSharedWebsite(auth, websiteId))) {
+    if (auth.user?.isAdmin && !auth.shareToken) {
+      const website = await getWebsite(websiteId);
+
+      if (!website || website.deletedAt) {
+        return json(null);
+      }
+    }
+
     return unauthorized();
   }
 

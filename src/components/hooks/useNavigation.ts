@@ -15,21 +15,21 @@ export function useNavigation() {
   const queryParams = useMemo(() => Object.fromEntries(searchParams), [searchParamsString]);
 
   const updateParams = useCallback(
-    (params?: Record<string, string | number>) => {
+    (params?: Record<string, string | number | undefined>) => {
       return buildPath(pathname, { ...queryParams, ...params });
     },
     [pathname, queryParams],
   );
 
   const replaceParams = useCallback(
-    (params?: Record<string, string | number>) => {
+    (params?: Record<string, string | number | undefined>) => {
       return buildPath(pathname, params);
     },
     [pathname],
   );
 
   const renderUrl = useCallback(
-    (path: string, params?: Record<string, string | number> | false) => {
+    (path: string, params?: Record<string, string | number | undefined> | false) => {
       return buildPath(
         teamId ? `/teams/${teamId}${path}` : path,
         params === false ? {} : { ...queryParams, ...params },

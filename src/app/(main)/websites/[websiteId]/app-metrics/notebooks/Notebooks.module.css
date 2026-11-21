@@ -1,0 +1,228 @@
+.screen {
+  width: 100%;
+  min-width: 0;
+}
+
+.landing {
+  min-height: 430px;
+}
+
+.empty {
+  min-height: 280px;
+  padding: 48px 24px;
+  border: 1px dashed var(--zen-border);
+  border-radius: 12px;
+  background: var(--zen-surface-sunken);
+}
+
+.emptyIcon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid var(--zen-border);
+  border-radius: 12px;
+  color: var(--zen-fg-muted);
+  background: var(--zen-surface);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.notebookCard {
+  min-height: 150px;
+  padding: 20px;
+  border: 1px solid var(--zen-border);
+  border-radius: 10px;
+  color: var(--zen-fg);
+  text-align: left;
+  background: var(--zen-surface);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.notebookCard:hover {
+  border-color: var(--zen-border-strong);
+  background: var(--zen-interactive-bg-hover);
+  transform: translateY(-1px);
+}
+
+.notebookCard:active {
+  transform: translateY(0);
+}
+
+.notebookCard:focus-visible,
+.titleInput:focus-visible,
+.blockInput:focus-visible {
+  outline: 2px solid var(--zen-focus-ring);
+  outline-offset: 2px;
+}
+
+.cardTitle {
+  display: block;
+  margin-bottom: 12px;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  display: block;
+  margin-top: 28px;
+  color: var(--zen-fg-muted);
+  font-size: 0.8125rem;
+}
+
+.editor {
+  width: min(920px, 100%);
+  margin: 0 auto;
+}
+
+.editorPanel {
+  padding: 44px clamp(20px, 6vw, 72px);
+  border: 1px solid var(--zen-border);
+  border-radius: 12px;
+  background: var(--zen-surface);
+}
+
+.titleInput,
+.blockInput {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  color: var(--zen-fg);
+  background: transparent;
+  font: inherit;
+}
+
+.titleInput {
+  margin-bottom: 28px;
+  padding: 4px 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.titleInput::placeholder,
+.blockInput::placeholder {
+  color: var(--zen-fg-muted);
+}
+
+.block {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  margin: 8px -8px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.block:focus-within,
+.block:hover {
+  background: var(--zen-surface-sunken);
+}
+
+.blockInput {
+  min-height: 42px;
+  padding: 8px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.headingInput {
+  min-height: 48px;
+  font-size: 1.35rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.checklist {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.checkControl {
+  display: grid;
+  width: 40px;
+  min-height: 42px;
+  place-items: center;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--zen-primary);
+}
+
+.checked {
+  color: var(--zen-fg-muted);
+  text-decoration: line-through;
+}
+
+.blockActions {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.block:hover .blockActions,
+.block:focus-within .blockActions {
+  opacity: 1;
+}
+
+.addBar {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--zen-border);
+}
+
+.error {
+  padding: 12px 16px;
+  border: 1px solid var(--zen-status-error);
+  border-radius: 8px;
+  color: var(--zen-status-error);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editorPanel {
+    padding: 28px 16px;
+  }
+
+  .block {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .blockActions {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notebookCard,
+  .blockActions {
+    transition: none;
+  }
+}

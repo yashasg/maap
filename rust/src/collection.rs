@@ -192,7 +192,20 @@ pub fn map_signal(signal: &Value, options: &TdOptions, now_ms: i64) -> SignalDis
         "TelemetryDeck.AppInfo.version",
         "TelemetryDeck.AppInfo.buildNumber",
         "TelemetryDeck.Device.modelName",
+        "TelemetryDeck.Device.operatingSystem",
+        "TelemetryDeck.Device.platform",
+        "TelemetryDeck.Device.orientation",
+        "TelemetryDeck.Device.screenResolutionWidth",
+        "TelemetryDeck.Device.screenResolutionHeight",
         "TelemetryDeck.Device.systemVersion",
+        "TelemetryDeck.RunContext.language",
+        "TelemetryDeck.UserPreference.colorScheme",
+        "TelemetryDeck.UserPreference.language",
+        "TelemetryDeck.UserPreference.region",
+        "TelemetryDeck.UserPreference.layoutDirection",
+        "TelemetryDeck.Error.category",
+        "TelemetryDeck.SDK.name",
+        "TelemetryDeck.SDK.version",
     ];
 
     let mut data = Map::new();
@@ -486,10 +499,10 @@ pub fn extract_location_headers(
                 });
             let city = headers
                 .get(city_hdr)
-                .and_then(|v| v.to_str().ok())
+                .and_then(|v| std::str::from_utf8(v.as_bytes()).ok())
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
-                .map(str::to_string);
+                .map(|city| crate::decode_uri(city, false));
             return (Some(country.to_string()), region, city);
         }
     }
@@ -1054,7 +1067,16 @@ async fn ensure_session(
             language, country, region, city, distinct_id, created_at
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        ON CONFLICT (session_id) DO NOTHING
+        ON CONFLICT (session_id) DO UPDATE SET
+            country = COALESCE(session.country, excluded.country),
+            region = COALESCE(session.region, excluded.region),
+            city = COALESCE(session.city, excluded.city)
+        WHERE session.website_id = excluded.website_id AND excluded.country IS NOT NULL
+          AND (session.country IS NULL OR session.country = excluded.country)
+          AND (session.region IS NULL OR excluded.region IS NULL OR session.region = excluded.region)
+          AND (session.city IS NULL OR excluded.city IS NULL OR session.city = excluded.city)
+          AND (session.country IS NULL OR (session.region IS NULL AND excluded.region IS NOT NULL)
+               OR (session.city IS NULL AND excluded.city IS NOT NULL))
         "#,
     )
     .bind(session.session_id)

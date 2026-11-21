@@ -1,9 +1,13 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { buildPath } from '@/lib/url';
-import { render } from '@/test/render';
+import { render, screen } from '@/test/render';
 import { WebsiteSelect } from './WebsiteSelect';
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), query: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  query: vi.fn(),
+  website: undefined as { name: string } | undefined,
+}));
 
 vi.mock('@/components/hooks/useApi', () => ({
   useApi: () => ({
@@ -26,7 +30,7 @@ vi.mock('@/components/hooks', async () => {
       labels: { selectWebsite: 'Select website' },
       messages: { noResultsFound: 'No results found' },
     }),
-    useWebsiteQuery: () => ({ data: undefined }),
+    useWebsiteQuery: () => ({ data: mocks.website }),
     useUserWebsitesQuery,
   };
 });
@@ -34,6 +38,7 @@ vi.mock('@/components/hooks', async () => {
 beforeEach(() => {
   mocks.get.mockReset();
   mocks.query.mockReset();
+  mocks.website = undefined;
 });
 
 async function requestedPath() {
@@ -61,4 +66,18 @@ test('requests only the selected team websites inside a team', async () => {
   render(<WebsiteSelect teamId="team-1" includeTeams={false} onChange={vi.fn()} />);
 
   expect(await requestedPath()).toBe('/teams/team-1/websites?search=&pageSize=100');
+});
+
+test('clears a selected website name when returning to the workspace home', () => {
+  mocks.website = { name: 'Deleted app' };
+  const { rerender } = render(
+    <WebsiteSelect websiteId="website-1" placeholder="Select an app" onChange={vi.fn()} />,
+  );
+
+  expect(screen.getByText('Deleted app')).toBeVisible();
+
+  rerender(<WebsiteSelect placeholder="Select an app" onChange={vi.fn()} />);
+
+  expect(screen.queryByText('Deleted app')).not.toBeInTheDocument();
+  expect(screen.getByText('Select an app')).toBeVisible();
 });

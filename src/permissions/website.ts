@@ -1,10 +1,10 @@
+import type { Website } from '@/generated/prisma/client';
 import { hasPermission } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/constants';
 import { getEntity } from '@/lib/entity';
 import { getBillingAccess, getTeamBillingScope, getWebsiteBillingScope } from '@/lib/load';
 import prisma from '@/lib/prisma';
 import type { Auth } from '@/lib/types';
-import type { Website } from '@/generated/prisma/client';
 import { getTeamUser, getWebsite } from '@/queries/prisma';
 
 async function hasWebsiteBillingAccess(website: Pick<Website, 'userId' | 'teamId'>) {
@@ -12,6 +12,12 @@ async function hasWebsiteBillingAccess(website: Pick<Website, 'userId' | 'teamId
 }
 
 export async function canViewWebsite({ user, shareToken }: Auth, websiteId: string) {
+  const entity = await getEntity(websiteId);
+
+  if (!entity || ('deletedAt' in entity && entity.deletedAt)) {
+    return false;
+  }
+
   if (user?.isAdmin) {
     return true;
   }
@@ -27,9 +33,7 @@ export async function canViewWebsite({ user, shareToken }: Auth, websiteId: stri
     return true;
   }
 
-  const entity = await getEntity(websiteId);
-
-  if (!entity || !user) {
+  if (!user) {
     return false;
   }
 
@@ -153,13 +157,17 @@ export async function canUpdateWebsite({ user }: Auth, websiteId: string) {
     return false;
   }
 
+  const website = await getWebsite(websiteId);
+
+  if (!website || website.deletedAt) {
+    return false;
+  }
+
   if (user.isAdmin) {
     return true;
   }
 
-  const website = await getWebsite(websiteId);
-
-  if (!website) {
+  if (!(await hasPermission(user.role, PERMISSIONS.websiteUpdate))) {
     return false;
   }
 
@@ -185,13 +193,17 @@ export async function canDeleteWebsite({ user }: Auth, websiteId: string) {
     return false;
   }
 
+  const website = await getWebsite(websiteId);
+
+  if (!website || website.deletedAt) {
+    return false;
+  }
+
   if (user.isAdmin) {
     return true;
   }
 
-  const website = await getWebsite(websiteId);
-
-  if (!website) {
+  if (!(await hasPermission(user.role, PERMISSIONS.websiteDelete))) {
     return false;
   }
 

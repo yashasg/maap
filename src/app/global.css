@@ -1,5 +1,5 @@
 :root {
-  --zen-font-family: var(--font-inter), sans-serif;
+  --zen-font-family: 'Satoshi', system-ui, sans-serif;
 }
 
 /* Preserve the brand accent when Zen applies its light or dark theme tokens. */
@@ -18,7 +18,7 @@ html {
 
 html,
 body {
-  font-family: var(--zen-font-family), sans-serif;
+  font-family: var(--zen-font-family);
   color: var(--zen-fg);
   background-color: var(--zen-surface-raised);
   width: 100%;

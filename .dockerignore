@@ -17,4 +17,5 @@ docker-compose.test.yml
 playwright-report
 test-results
 rust/target
+public/fonts/*.woff2*
 

@@ -28,11 +28,13 @@ model User {
   teams                TeamUser[]
   reports              Report[]
   boards               Board[]               @relation("user")
+  notebooks            Notebook[]
   twoFactorAuth        TwoFactorAuth?
   twoFactorBackupCodes TwoFactorBackupCode[]
   twoFactorOtpUseds    TwoFactorOtpUsed[]
   twoFactorRateLimit   TwoFactorRateLimit?
   apiKeys              ApiKey[]
+  workspaceFolders     WorkspaceFolder[]
 
   @@map("user")
 }
@@ -122,6 +124,9 @@ model Website {
   sessionReplays      SessionReplay[]
   sessionReplaysSaved SessionReplaySaved[]
   heatmapEvents       HeatmapEvent[]
+  appReportSettings   AppReportSettings?
+  notebooks           Notebook[]
+  folderAssignment    WebsiteFolderAssignment?
 
   @@index([userId])
   @@index([teamId])
@@ -244,6 +249,7 @@ model Team {
   links    Link[]
   pixels   Pixel[]
   boards   Board[]
+  workspaceFolders WorkspaceFolder[]
 
   @@index([accessCode])
   @@map("team")
@@ -265,6 +271,36 @@ model TeamUser {
   @@map("team_user")
 }
 
+model WorkspaceFolder {
+  id        String   @id() @map("folder_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  userId    String?  @map("user_id") @db.Uuid
+  teamId    String?  @map("team_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User?                     @relation(fields: [userId], references: [id])
+  team        Team?                     @relation(fields: [teamId], references: [id])
+  assignments WebsiteFolderAssignment[]
+
+  @@index([userId])
+  @@index([teamId])
+  @@map("workspace_folder")
+}
+
+model WebsiteFolderAssignment {
+  websiteId String   @id() @map("website_id") @db.Uuid
+  folderId  String   @map("folder_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  website Website         @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  folder  WorkspaceFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@index([folderId])
+  @@map("website_folder_assignment")
+}
+
 model Report {
   id          String    @id() @map("report_id") @db.Uuid
   userId      String    @map("user_id") @db.Uuid
@@ -284,6 +320,23 @@ model Report {
   @@index([type])
   @@index([name])
   @@map("report")
+}
+
+model Notebook {
+  id        String   @id() @map("notebook_id") @db.Uuid
+  websiteId String   @map("website_id") @db.Uuid
+  createdBy String?  @map("created_by") @db.Uuid
+  title     String   @db.VarChar(200)
+  content   Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  creator User?   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([websiteId, updatedAt(sort: Desc)])
+  @@index([createdBy])
+  @@map("notebook")
 }
 
 model Annotation {
@@ -531,6 +584,18 @@ model AppSetting {
   value String
 
   @@map("app_setting")
+}
+
+model AppReportSettings {
+  websiteId          String   @id @map("website_id") @db.Uuid
+  overviewLayout     String   @default("application") @map("overview_layout") @db.VarChar(20)
+  colorScheme        String   @default("default") @map("color_scheme") @db.VarChar(20)
+  revenueDisplayMode String   @default("none") @map("revenue_display_mode") @db.VarChar(20)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  website            Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@map("app_settings")
 }
 
 model ErrorIssue {

@@ -1,0 +1,95 @@
+.identityGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.valueCard {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.5rem;
+  background: var(--zen-surface-sunken);
+}
+
+.valueRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.codeValue,
+.codeBlock {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.codeValue {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--zen-fg);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.steps {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: setup-step;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.75rem;
+  counter-increment: setup-step;
+}
+
+.step::before {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--zen-primary-fg);
+  background: var(--zen-primary);
+  content: counter(setup-step);
+  font-weight: 700;
+}
+
+.codeShell {
+  position: relative;
+  min-width: 0;
+}
+
+.copyButton {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.codeBlock {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0;
+  padding: 1rem 3.25rem 1rem 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.5rem;
+  color: var(--zen-fg);
+  background: var(--zen-surface-sunken);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+@media (max-width: 720px) {
+  .identityGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

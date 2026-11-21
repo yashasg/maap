@@ -13,6 +13,7 @@ export PATH="$PWD/node_modules/.bin:$PATH"
 
 node scripts/check-db.js
 node scripts/update-tracker.js
+node scripts/fetch-font.mjs
 
 # Next's standalone server binds to $HOSTNAME. Some runtimes (e.g. Podman pods)
 # overwrite it with the container hostname, which binds only to the pod IP and

@@ -105,7 +105,11 @@ export function BoardEditColumn({
             backgroundColor={hasComponent ? 'surface-sunken' : undefined}
           >
             <TooltipTrigger delay={0}>
-              <Button variant="outline" onPress={() => setShowSelect(true)}>
+              <Button
+                variant="outline"
+                aria-label={t(hasComponent ? labels.edit : labels.selectComponent)}
+                onPress={() => setShowSelect(true)}
+              >
                 <Icon size="sm">{hasComponent ? <Pencil /> : <Plus />}</Icon>
               </Button>
               <Tooltip>{t(hasComponent ? labels.edit : labels.selectComponent)}</Tooltip>

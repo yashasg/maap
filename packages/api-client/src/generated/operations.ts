@@ -170,6 +170,14 @@ export const operations = {
     queryParams: [],
     hasBody: true,
   },
+  createWebsiteNotebook: {
+    operationId: 'createWebsiteNotebook',
+    method: 'post',
+    path: '/api/websites/{websiteId}/notebooks',
+    pathParams: ['websiteId'],
+    queryParams: [],
+    hasBody: true,
+  },
   createWebsiteSegment: {
     operationId: 'createWebsiteSegment',
     method: 'post',
@@ -322,6 +330,321 @@ export const operations = {
       'page',
       'pageSize',
       'maxResults',
+    ],
+    hasBody: false,
+  },
+  getAppAccessibilityReport: {
+    operationId: 'getAppAccessibilityReport',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-reports/accessibility',
+    pathParams: ['websiteId'],
+    queryParams: [
+      'startAt',
+      'endAt',
+      'startDate',
+      'endDate',
+      'timezone',
+      'unit',
+      'compare',
+      'period',
+      'path',
+      'referrer',
+      'title',
+      'query',
+      'os',
+      'browser',
+      'device',
+      'country',
+      'region',
+      'city',
+      'tag',
+      'hostname',
+      'distinctId',
+      'language',
+      'event',
+      'utmSource',
+      'utmMedium',
+      'utmCampaign',
+      'utmContent',
+      'utmTerm',
+      'segment',
+      'cohort',
+      'eventType',
+      'excludeBounce',
+      'match',
+    ],
+    hasBody: false,
+  },
+  getAppAcquisitionReport: {
+    operationId: 'getAppAcquisitionReport',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-reports/acquisition',
+    pathParams: ['websiteId'],
+    queryParams: [
+      'startAt',
+      'endAt',
+      'startDate',
+      'endDate',
+      'timezone',
+      'unit',
+      'compare',
+      'period',
+      'path',
+      'referrer',
+      'title',
+      'query',
+      'os',
+      'browser',
+      'device',
+      'country',
+      'region',
+      'city',
+      'tag',
+      'hostname',
+      'distinctId',
+      'language',
+      'event',
+      'utmSource',
+      'utmMedium',
+      'utmCampaign',
+      'utmContent',
+      'utmTerm',
+      'segment',
+      'cohort',
+      'eventType',
+      'excludeBounce',
+      'match',
+      'testMode',
+    ],
+    hasBody: false,
+  },
+  getAppActivationReport: {
+    operationId: 'getAppActivationReport',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-reports/activation',
+    pathParams: ['websiteId'],
+    queryParams: [
+      'startAt',
+      'endAt',
+      'startDate',
+      'endDate',
+      'timezone',
+      'unit',
+      'compare',
+      'period',
+      'path',
+      'referrer',
+      'title',
+      'query',
+      'os',
+      'browser',
+      'device',
+      'country',
+      'region',
+      'city',
+      'tag',
+      'hostname',
+      'distinctId',
+      'language',
+      'event',
+      'utmSource',
+      'utmMedium',
+      'utmCampaign',
+      'utmContent',
+      'utmTerm',
+      'segment',
+      'cohort',
+      'eventType',
+      'excludeBounce',
+      'match',
+    ],
+    hasBody: false,
+  },
+  getAppDevicesReport: {
+    operationId: 'getAppDevicesReport',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-reports/devices',
+    pathParams: ['websiteId'],
+    queryParams: [
+      'startAt',
+      'endAt',
+      'startDate',
+      'endDate',
+      'timezone',
+      'unit',
+      'compare',
+      'period',
+      'path',
+      'referrer',
+      'title',
+      'query',
+      'os',
+      'browser',
+      'device',
+      'country',
+      'region',
+      'city',
+      'tag',
+      'hostname',
+      'distinctId',
+      'language',
+      'event',
+      'utmSource',
+      'utmMedium',
+      'utmCampaign',
+      'utmContent',
+      'utmTerm',
+      'segment',
+      'cohort',
+      'eventType',
+      'excludeBounce',
+      'match',
+    ],
+    hasBody: false,
+  },
+  getAppEventTypesReport: {
+    operationId: 'getAppEventTypesReport',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-reports/event-types',
+    pathParams: ['websiteId'],
+    queryParams: [
+      'startAt',
+      'endAt',
+      'startDate',
+      'endDate',
+      'timezone',
+      'unit',
+      'compare',
+      'period',
+      'path',
+      'referrer',
+      'title',
+      'query',
+      'os',
+      'browser',
+      'device',
+      'country',
+      'region',
+      'city',
+      'tag',
+      'hostname',
+      'distinctId',
+      'language',
+      'event',
+      'utmSource',
+      'utmMedium',
+      'utmCampaign',
+      'utmContent',
+      'utmTerm',
+      'segment',
+      'cohort',
+      'eventType',
+      'excludeBounce',
+      'match',
+    ],
+    hasBody: false,
+  },
+  getAppOverviewReport: {
+    operationId: 'getAppOverviewReport',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-reports/overview',
+    pathParams: ['websiteId'],
+    queryParams: [
+      'startAt',
+      'endAt',
+      'startDate',
+      'endDate',
+      'timezone',
+      'unit',
+      'compare',
+      'period',
+      'path',
+      'referrer',
+      'title',
+      'query',
+      'os',
+      'browser',
+      'device',
+      'country',
+      'region',
+      'city',
+      'tag',
+      'hostname',
+      'distinctId',
+      'language',
+      'event',
+      'utmSource',
+      'utmMedium',
+      'utmCampaign',
+      'utmContent',
+      'utmTerm',
+      'segment',
+      'cohort',
+      'eventType',
+      'excludeBounce',
+      'match',
+    ],
+    hasBody: false,
+  },
+  getAppRetentionReport: {
+    operationId: 'getAppRetentionReport',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-reports/retention',
+    pathParams: ['websiteId'],
+    queryParams: [
+      'startAt',
+      'endAt',
+      'startDate',
+      'endDate',
+      'timezone',
+      'unit',
+      'compare',
+      'period',
+      'path',
+      'referrer',
+      'title',
+      'query',
+      'os',
+      'browser',
+      'device',
+      'country',
+      'region',
+      'city',
+      'tag',
+      'hostname',
+      'distinctId',
+      'language',
+      'event',
+      'utmSource',
+      'utmMedium',
+      'utmCampaign',
+      'utmContent',
+      'utmTerm',
+      'segment',
+      'cohort',
+      'eventType',
+      'excludeBounce',
+      'match',
+    ],
+    hasBody: false,
+  },
+  getAppVersionsReport: {
+    operationId: 'getAppVersionsReport',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-reports/versions',
+    pathParams: ['websiteId'],
+    queryParams: [
+      'startAt',
+      'endAt',
+      'startDate',
+      'endDate',
+      'timezone',
+      'unit',
+      'compare',
+      'period',
+      'dimension',
+      'tag',
+      'testMode',
     ],
     hasBody: false,
   },
@@ -1570,6 +1893,14 @@ export const operations = {
     queryParams: ['startAt', 'endAt', 'search', 'page', 'pageSize', 'maxResults', 'period'],
     hasBody: false,
   },
+  getWebsiteAppSettings: {
+    operationId: 'getWebsiteAppSettings',
+    method: 'get',
+    path: '/api/websites/{websiteId}/app-settings',
+    pathParams: ['websiteId'],
+    queryParams: [],
+    hasBody: false,
+  },
   getWebsiteAttribution: {
     operationId: 'getWebsiteAttribution',
     method: 'get',
@@ -2190,6 +2521,14 @@ export const operations = {
       'excludeBounce',
       'match',
     ],
+    hasBody: false,
+  },
+  getWebsiteNotebook: {
+    operationId: 'getWebsiteNotebook',
+    method: 'get',
+    path: '/api/websites/{websiteId}/notebooks/{notebookId}',
+    pathParams: ['websiteId', 'notebookId'],
+    queryParams: [],
     hasBody: false,
   },
   getWebsitePageviews: {
@@ -3058,6 +3397,14 @@ export const operations = {
     queryParams: [],
     hasBody: true,
   },
+  listWebsiteNotebooks: {
+    operationId: 'listWebsiteNotebooks',
+    method: 'get',
+    path: '/api/websites/{websiteId}/notebooks',
+    pathParams: ['websiteId'],
+    queryParams: [],
+    hasBody: false,
+  },
   listWebsites: {
     operationId: 'listWebsites',
     method: 'get',
@@ -3218,6 +3565,14 @@ export const operations = {
     queryParams: [],
     hasBody: true,
   },
+  updateWebsiteAppSettings: {
+    operationId: 'updateWebsiteAppSettings',
+    method: 'post',
+    path: '/api/websites/{websiteId}/app-settings',
+    pathParams: ['websiteId'],
+    queryParams: [],
+    hasBody: true,
+  },
   updateWebsiteErrorIssue: {
     operationId: 'updateWebsiteErrorIssue',
     method: 'patch',
@@ -3239,6 +3594,14 @@ export const operations = {
     method: 'post',
     path: '/api/websites/{websiteId}/goals/{goalId}',
     pathParams: ['websiteId', 'goalId'],
+    queryParams: [],
+    hasBody: true,
+  },
+  updateWebsiteNotebook: {
+    operationId: 'updateWebsiteNotebook',
+    method: 'post',
+    path: '/api/websites/{websiteId}/notebooks/{notebookId}',
+    pathParams: ['websiteId', 'notebookId'],
     queryParams: [],
     hasBody: true,
   },
@@ -3537,6 +3900,18 @@ export abstract class GeneratedUmamiClient {
   }
 
   /**
+   * Create a website notebook
+   * Creates a notebook for a website the authenticated user can edit.
+   * `POST /api/websites/{websiteId}/notebooks`
+   */
+  createWebsiteNotebook(
+    input: OperationInput<'createWebsiteNotebook'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'createWebsiteNotebook'>> {
+    return this.execute('createWebsiteNotebook', input, options);
+  }
+
+  /**
    * Create a website segment or cohort
    * Saves a named segment or cohort with its type and filter parameters for the website.
    * `POST /api/websites/{websiteId}/segments`
@@ -3750,6 +4125,102 @@ export abstract class GeneratedUmamiClient {
     options?: RequestOptions,
   ): Promise<OperationOutput<'exportWebsite'>> {
     return this.execute('exportWebsite', input, options);
+  }
+
+  /**
+   * Get the app accessibility report
+   * Returns aggregate signal counts for reported Dynamic Type and accessibility preference values without exposing individual users.
+   * `GET /api/websites/{websiteId}/app-reports/accessibility`
+   */
+  getAppAccessibilityReport(
+    input: OperationInput<'getAppAccessibilityReport'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getAppAccessibilityReport'>> {
+    return this.execute('getAppAccessibilityReport', input, options);
+  }
+
+  /**
+   * Get the app acquisition report
+   * Returns first-seen identified app users across time series, calendar patterns, and device, platform, region, and language breakdowns.
+   * `GET /api/websites/{websiteId}/app-reports/acquisition`
+   */
+  getAppAcquisitionReport(
+    input: OperationInput<'getAppAcquisitionReport'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getAppAcquisitionReport'>> {
+    return this.execute('getAppAcquisitionReport', input, options);
+  }
+
+  /**
+   * Get the app activation report
+   * Returns identified users that meet the fixed five-minute activation rule, along with input availability, time series, calendar patterns, and breakdowns.
+   * `GET /api/websites/{websiteId}/app-reports/activation`
+   */
+  getAppActivationReport(
+    input: OperationInput<'getAppActivationReport'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getAppActivationReport'>> {
+    return this.execute('getAppActivationReport', input, options);
+  }
+
+  /**
+   * Get the app devices report
+   * Returns aggregate signal counts for device models, operating systems, platforms, screen sizes, color schemes, and orientations.
+   * `GET /api/websites/{websiteId}/app-reports/devices`
+   */
+  getAppDevicesReport(
+    input: OperationInput<'getAppDevicesReport'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getAppDevicesReport'>> {
+    return this.execute('getAppDevicesReport', input, options);
+  }
+
+  /**
+   * Get the app event types report
+   * Returns custom event names with total event counts and distinct identified-user counts for the selected scope.
+   * `GET /api/websites/{websiteId}/app-reports/event-types`
+   */
+  getAppEventTypesReport(
+    input: OperationInput<'getAppEventTypesReport'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getAppEventTypesReport'>> {
+    return this.execute('getAppEventTypesReport', input, options);
+  }
+
+  /**
+   * Get the app overview report
+   * Returns identified-user totals, daily activity, retention checkpoints, and current app and SDK dimension breakdowns for the selected scope.
+   * `GET /api/websites/{websiteId}/app-reports/overview`
+   */
+  getAppOverviewReport(
+    input: OperationInput<'getAppOverviewReport'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getAppOverviewReport'>> {
+    return this.execute('getAppOverviewReport', input, options);
+  }
+
+  /**
+   * Get the app retention report
+   * Returns identified returning users across time series, calendar patterns, and device, platform, region, and language breakdowns.
+   * `GET /api/websites/{websiteId}/app-reports/retention`
+   */
+  getAppRetentionReport(
+    input: OperationInput<'getAppRetentionReport'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getAppRetentionReport'>> {
+    return this.execute('getAppRetentionReport', input, options);
+  }
+
+  /**
+   * Get the app versions report
+   * Returns event counts grouped by app version, build number, or SDK version for the selected scope.
+   * `GET /api/websites/{websiteId}/app-reports/versions`
+   */
+  getAppVersionsReport(
+    input: OperationInput<'getAppVersionsReport'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getAppVersionsReport'>> {
+    return this.execute('getAppVersionsReport', input, options);
   }
 
   /**
@@ -4437,6 +4908,18 @@ export abstract class GeneratedUmamiClient {
   }
 
   /**
+   * Get website app settings
+   * Returns persisted app presentation settings, defaults for unset values, and write capability.
+   * `GET /api/websites/{websiteId}/app-settings`
+   */
+  getWebsiteAppSettings(
+    input: OperationInput<'getWebsiteAppSettings'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getWebsiteAppSettings'>> {
+    return this.execute('getWebsiteAppSettings', input, options);
+  }
+
+  /**
    * Get website attribution
    * Attributes conversions for a page path or custom event to referrers, paid ads, and UTM parameters using a first-click or last-click model.
    * `GET /api/websites/{websiteId}/attribution`
@@ -4710,6 +5193,18 @@ export abstract class GeneratedUmamiClient {
     options?: RequestOptions,
   ): Promise<OperationOutput<'getWebsiteMetrics'>> {
     return this.execute('getWebsiteMetrics', input, options);
+  }
+
+  /**
+   * Get a website notebook
+   * Returns a notebook from the website and whether the authenticated user can edit it.
+   * `GET /api/websites/{websiteId}/notebooks/{notebookId}`
+   */
+  getWebsiteNotebook(
+    input: OperationInput<'getWebsiteNotebook'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'getWebsiteNotebook'>> {
+    return this.execute('getWebsiteNotebook', input, options);
   }
 
   /**
@@ -5097,6 +5592,18 @@ export abstract class GeneratedUmamiClient {
   }
 
   /**
+   * List website notebooks
+   * Returns notebook summaries for the website and whether the authenticated user can edit them.
+   * `GET /api/websites/{websiteId}/notebooks`
+   */
+  listWebsiteNotebooks(
+    input: OperationInput<'listWebsiteNotebooks'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'listWebsiteNotebooks'>> {
+    return this.execute('listWebsiteNotebooks', input, options);
+  }
+
+  /**
    * List websites
    * Returns a paginated list of the current user's websites, optionally including websites accessible through team membership.
    * `GET /api/websites`
@@ -5319,6 +5826,18 @@ export abstract class GeneratedUmamiClient {
   }
 
   /**
+   * Update website app settings
+   * Replaces the complete persisted app settings record for the website.
+   * `POST /api/websites/{websiteId}/app-settings`
+   */
+  updateWebsiteAppSettings(
+    input: OperationInput<'updateWebsiteAppSettings'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'updateWebsiteAppSettings'>> {
+    return this.execute('updateWebsiteAppSettings', input, options);
+  }
+
+  /**
    * Update an error issue status
    * Changes the status of an error issue to unresolved, resolved, or ignored. Changing the status does not discard new occurrences.
    * `PATCH /api/websites/{websiteId}/errors/{issueId}`
@@ -5352,6 +5871,18 @@ export abstract class GeneratedUmamiClient {
     options?: RequestOptions,
   ): Promise<OperationOutput<'updateWebsiteGoal'>> {
     return this.execute('updateWebsiteGoal', input, options);
+  }
+
+  /**
+   * Update a website notebook
+   * Replaces the title and content of a notebook in the specified website.
+   * `POST /api/websites/{websiteId}/notebooks/{notebookId}`
+   */
+  updateWebsiteNotebook(
+    input: OperationInput<'updateWebsiteNotebook'>,
+    options?: RequestOptions,
+  ): Promise<OperationOutput<'updateWebsiteNotebook'>> {
+    return this.execute('updateWebsiteNotebook', input, options);
   }
 
   /**

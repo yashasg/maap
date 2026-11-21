@@ -87,6 +87,10 @@ describe('team website access', () => {
 
 function createDeleteTx(calls: string[]) {
   return {
+    $queryRawUnsafe: vi.fn(async () => {
+      calls.push('websiteLock');
+      return [{ website_id: 'website-1' }];
+    }),
     sessionReplaySaved: {
       deleteMany: vi.fn(async () => {
         calls.push('sessionReplaySaved');
@@ -150,6 +154,11 @@ function createDeleteTx(calls: string[]) {
         calls.push('session');
       }),
     },
+    notebook: {
+      deleteMany: vi.fn(async () => {
+        calls.push('notebook');
+      }),
+    },
     report: {
       deleteMany: vi.fn(async () => {
         calls.push('report');
@@ -192,7 +201,7 @@ describe('website delete dependencies', () => {
     process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/umami?schema=public';
   });
 
-  test('deleteWebsite runs fast event-data cleanup, a relational safety pass, and heatmap cleanup before deleting website events', async () => {
+  test('deleteWebsite locks the live website and removes notebooks in the soft-delete transaction', async () => {
     const calls: string[] = [];
     const tx = createDeleteTx(calls);
 
@@ -200,6 +209,17 @@ describe('website delete dependencies', () => {
 
     await deleteWebsite('website-1');
 
+    expect(tx.$queryRawUnsafe).toHaveBeenCalledWith(
+      expect.stringContaining('deleted_at IS NULL'),
+      'website-1',
+    );
+    expect(tx.$queryRawUnsafe).toHaveBeenCalledWith(
+      expect.stringContaining('FOR UPDATE'),
+      'website-1',
+    );
+    expect(tx.notebook.deleteMany).toHaveBeenCalledWith({
+      where: { websiteId: 'website-1' },
+    });
     expect(tx.eventData.deleteMany).toHaveBeenCalledWith({
       where: { websiteId: 'website-1' },
     });
@@ -218,6 +238,7 @@ describe('website delete dependencies', () => {
       'website-1',
     );
     expect(calls).toEqual([
+      'websiteLock',
       'sessionReplaySaved',
       'sessionReplay',
       'heatmapEvent',
@@ -232,12 +253,32 @@ describe('website delete dependencies', () => {
       'sessionLink',
       'websiteEvent',
       'session',
+      'notebook',
       'report',
       'segment',
       'annotation',
       'share',
       'websiteDelete',
     ]);
+  });
+
+  test('cloud soft-delete removes notebooks before marking the website deleted', async () => {
+    const calls: string[] = [];
+    const tx = createDeleteTx(calls);
+    process.env.CLOUD_MODE = '1';
+    transactionMock.mockImplementation(async callback => callback(tx));
+
+    await deleteWebsite('website-1');
+
+    expect(tx.notebook.deleteMany).toHaveBeenCalledWith({
+      where: { websiteId: 'website-1' },
+    });
+    expect(tx.website.update).toHaveBeenCalledWith({
+      data: { deletedAt: expect.any(Date) },
+      where: { id: 'website-1' },
+    });
+    expect(calls.indexOf('notebook')).toBeLessThan(calls.indexOf('websiteUpdate'));
+    expect(tx.website.delete).not.toHaveBeenCalled();
   });
 
   test('resetWebsite uses the same two-pass event-data cleanup before resetting the website', async () => {

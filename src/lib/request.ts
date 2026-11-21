@@ -19,6 +19,37 @@ import { badRequest, forbidden, unauthorized } from '@/lib/response';
 import type { QueryFilters } from '@/lib/types';
 import { getWebsiteSegment } from '@/queries/prisma';
 
+export function getCloudDataDateFloor(
+  account: { hasSubscription?: boolean | null } | null | undefined,
+  now = new Date(),
+) {
+  if (!process.env.CLOUD_MODE || account?.hasSubscription) {
+    return undefined;
+  }
+
+  return startOfMonth(subMonths(now, 6));
+}
+
+export async function getWebsiteDateFloor(websiteId: string, now = new Date()) {
+  const website = await fetchWebsite(websiteId);
+  if (!website) {
+    return undefined;
+  }
+
+  let minimumDate =
+    process.env.CLOUD_MODE && !website.teamId
+      ? getCloudDataDateFloor(await fetchAccount(website.userId), now)
+      : undefined;
+
+  if (website.resetAt) {
+    minimumDate = minimumDate
+      ? maxDate(minimumDate, new Date(website.resetAt))
+      : new Date(website.resetAt);
+  }
+
+  return minimumDate;
+}
+
 export async function parseRequest(
   request: Request,
   schema?: any,
@@ -128,20 +159,15 @@ export function getRequestFilters(query: Record<string, any>) {
   return result;
 }
 
-export async function setWebsiteDate(websiteId: string, data: Record<string, any>) {
-  const website = await fetchWebsite(websiteId);
-  const cloudMode = !!process.env.CLOUD_MODE;
+export async function setWebsiteDate(
+  websiteId: string,
+  data: Record<string, any>,
+  now = new Date(),
+) {
+  const minimumDate = await getWebsiteDateFloor(websiteId, now);
 
-  if (cloudMode && website && !website.teamId) {
-    const account = await fetchAccount(website.userId);
-
-    if (!account?.hasSubscription) {
-      data.startDate = maxDate(data.startDate, startOfMonth(subMonths(new Date(), 6)));
-    }
-  }
-
-  if (website?.resetAt) {
-    data.startDate = maxDate(data.startDate, new Date(website?.resetAt));
+  if (minimumDate) {
+    data.startDate = maxDate(data.startDate, minimumDate);
   }
 
   return data;
@@ -158,9 +184,13 @@ export async function getQueryFilters(
   const sessionPropertyFilters = parseSessionPropertyFilters(resolvedParams);
 
   let match = resolvedParams?.match;
+  let minimumDate: Date | undefined;
 
   if (websiteId) {
-    await setWebsiteDate(websiteId, dateRange);
+    minimumDate = await getWebsiteDateFloor(websiteId);
+    if (minimumDate) {
+      dateRange.startDate = maxDate(dateRange.startDate, minimumDate);
+    }
 
     if (resolvedParams.segment) {
       const segmentParams = (await getWebsiteSegment(websiteId, resolvedParams.segment))
@@ -218,6 +248,7 @@ export async function getQueryFilters(
 
   return {
     ...dateRange,
+    minimumDate,
     ...filters,
     match,
     minDuration: resolvedParams?.minDuration,

@@ -19,11 +19,11 @@ import { setUser } from '@/store/app';
 export function LoginForm() {
   const { t, labels, getErrorMessage } = useMessages();
   const router = useRouter();
-  const { mutateAsync, error } = useUpdateQuery('/auth/login');
+  const { mutate, error, isPending } = useUpdateQuery('/auth/login');
 
-  const handleSubmit = async (data: any) => {
-    await mutateAsync(data, {
-      onSuccess: async (response: any) => {
+  const handleSubmit = (data: Record<string, string>) => {
+    mutate(data, {
+      onSuccess: response => {
         if (response.requiresTwoFactor) {
           sessionStorage.setItem('umami.partial-token', response.partialToken);
           router.push('/login/two-factor');
@@ -70,7 +70,7 @@ export function LoginForm() {
             data-test="button-submit"
             variant="primary"
             style={{ flex: 1 }}
-            isDisabled={false}
+            isDisabled={isPending}
           >
             {t(labels.login)}
           </FormSubmitButton>

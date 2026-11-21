@@ -91,6 +91,10 @@ const headers = [
     headers: apiHeaders,
   },
   {
+    source: '/v2/:path*',
+    headers: apiHeaders,
+  },
+  {
     source: '/:path*',
     headers: defaultHeaders,
   },
@@ -145,6 +149,23 @@ if (isRelativeUrl(apiUrl)) {
 }
 
 const redirects = [
+  // Browser preflights cannot follow the SDK's trailing-slash redirect.
+  // Keep normal URL canonicalization everywhere except the /v2 collector.
+  {
+    source: '/:path((?!v2(?:/|$)).+)/',
+    destination: '/:path',
+    permanent: true,
+  },
+  ...(basePath
+    ? [
+        {
+          source: `${basePath}/`,
+          destination: basePath,
+          permanent: true,
+          basePath: false as const,
+        },
+      ]
+    : []),
   {
     source: '/teams/:id/dashboard/edit',
     destination: '/dashboard/edit',
@@ -207,6 +228,7 @@ if (isProd && cloudMode) {
 
 /** @type {import('next').NextConfig} */
 export default withNextIntl({
+  skipTrailingSlashRedirect: true,
   reactStrictMode: false,
   devIndicators: {
     position: 'bottom-right',
@@ -228,6 +250,7 @@ export default withNextIntl({
     ignoreBuildErrors: true,
   },
   experimental: {
+    agentUpgrade: 'security',
     useTypeScriptCli: true,
   },
   async headers() {

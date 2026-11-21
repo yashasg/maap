@@ -29,6 +29,22 @@ test('canViewWebsiteSection allows board shares for included websites', async ()
   ).resolves.toBe(true);
 });
 
+test('canViewWebsiteSection denies a website removed from the refreshed board scope', async () => {
+  await expect(
+    canViewWebsiteSection(
+      {
+        shareToken: {
+          shareType: ENTITY_TYPE.board,
+          websiteIds: ['retained-website'],
+          parameters: {},
+        },
+      },
+      'removed-website',
+      'overview',
+    ),
+  ).resolves.toBe(false);
+});
+
 // Board shares carry no section flags and their components never show per-visitor
 // session data, so a public board link must not unlock session endpoints.
 test('canViewWebsiteSection denies the sessions section to board shares', async () => {

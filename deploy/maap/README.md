@@ -4,6 +4,10 @@
 
 ## Run a release
 
+**Visitor location through the tunnel.** On the Cloudflare zone that serves the SDK's public hostname, open **Rules → Settings → Managed Transforms** and enable [Add visitor location headers](https://developers.cloudflare.com/rules/transform/managed-transforms/reference/#add-visitor-location-headers). Cloudflare adds `CF-IPCountry`, `CF-Region-Code` and `CF-IPCity` (when known) to the origin request before `cloudflared` forwards it to Maap. No connector restart, app change or MaxMind database is required. **Network → IP Geolocation** alone supplies only the country.
+
+Verify with a fresh SDK session sent to the public hostname. Open the session in Maap and check its country, region and city. These are estimates for the visitor's public IP (possibly a VPN exit), not the VM's location or device GPS. Requests made directly to the origin bypass Cloudflare. Changing the zone does not retroactively locate old visits.
+
 Default-branch pushes by the repository owner automatically publish `ghcr.io/yashasg/umami-td:<git-sha>` and invoke `/opt/maap/deploy.sh <git-sha>` on `maap-vm` (`us-west1-b`) over Google Cloud IAP using Workload Identity Federation (OIDC). `deploy.sh` backs up a running database to `/var/backups/maap`, atomically updates `UMAMI_IMAGE_TAG` in `/opt/maap/.env`, pulls and restarts `db` and `umami`, verifies `/api/heartbeat`, and starts `cloudflared` once `TUNNEL_TOKEN` is configured.
 
 For manual setup or inspection on the host:
@@ -16,7 +20,7 @@ For manual setup or inspection on the host:
    ```
 
 2. Edit `.env` privately. Set `UMAMI_IMAGE_TAG` to the approved **full commit SHA** published for `ghcr.io/yashasg/umami-td`, not `latest` or a branch. Generate three independent 32-byte hex strings (`openssl rand -hex 32`): one each for `POSTGRES_PASSWORD`, `APP_SECRET`, and `TWO_FACTOR_ENCRYPTION_KEY`. Hex avoids URL escaping in `DATABASE_URL`; 2FA requires exactly 64 hex characters. Escrow secrets separately from DB dumps. Enter the provided `TUNNEL_TOKEN`; never paste tokens into a command, ticket or build log. Use `config --quiet`, not `config`, around real credentials.
-3. Keep `TD_HOSTNAME=app.ios` (analytics label, **not** the public URL). Set `TD_ALLOWED_KEYS` to an explicit comma-separated list of exact payload keys to store (no wildcards). This **replaces** the defaults. Blank retains every non-`TelemetryDeck.*` key, including legacy metadata, plus the SDK version, build number, model name and system version. First-class dimensions and numeric `floatValue` are separate; filter sensitive data before sending. Leave `TD_TEST_WEBSITE_ID` blank until you have a separate test website UUID. Blank **drops** test signals; it does not send them to production.
+3. Keep `TD_HOSTNAME=app.ios` (analytics label, **not** the public URL). `TD_ALLOWED_KEYS` is a comma-separated list of exact payload keys to store (no wildcards). It **replaces** the defaults. Blank retains every non-`TelemetryDeck.*` key and these SDK dimensions: `TelemetryDeck.AppInfo.version`, `TelemetryDeck.AppInfo.buildNumber`, `TelemetryDeck.Device.modelName`, `TelemetryDeck.Device.operatingSystem`, `TelemetryDeck.Device.platform`, `TelemetryDeck.Device.orientation`, `TelemetryDeck.Device.screenResolutionWidth`, `TelemetryDeck.Device.screenResolutionHeight`, `TelemetryDeck.Device.systemVersion`, `TelemetryDeck.RunContext.language`, `TelemetryDeck.UserPreference.colorScheme`, `TelemetryDeck.UserPreference.language`, `TelemetryDeck.UserPreference.region`, `TelemetryDeck.UserPreference.layoutDirection`, `TelemetryDeck.Error.category`, `TelemetryDeck.SDK.name`, and `TelemetryDeck.SDK.version`. Missing values remain missing. Unknown namespaced fields, the full SDK payload, `TelemetryDeck.Error.message`, developer-supplied `TelemetryDeck.Error.id`, and accessibility-preference fields remain opt-in through exact allowlist entries because they can contain or reveal sensitive user data. Review privacy disclosures before enabling them. First-class dimensions and numeric `floatValue` are separate; filter sensitive data before sending. Leave `TD_TEST_WEBSITE_ID` blank to keep test signals on the app with `tag=test`; set a separate website UUID only to route them elsewhere.
 
    ```sh
    docker compose config --quiet
@@ -28,6 +32,14 @@ For manual setup or inspection on the host:
    docker compose ps
    docker stats --no-stream
    ```
+
+   To read the most recent container health check (no public diagnostics endpoint):
+
+   ```sh
+   docker inspect --format '{{range .State.Health.Log}}{{printf "%s" .Output}}{{end}}' "$(docker compose ps -q umami)" | tail -n 1
+   ```
+
+   The JSON snapshot reports the main server's current and peak RSS and swap, the number of Node processes, the container working set and memory limit, and available host RAM, all memory values in MiB. Peak RSS is since that process started. Missing measurements and unlimited container limits are `null`; only the HTTP heartbeat determines health.
 
    Record the SHA and pulled image digest. The app runs DB migrations at startup. For subsequent releases, take and validate a backup first; change **only** the SHA in `.env`, `docker compose pull umami`, then `docker compose up -d --wait --wait-timeout 240 umami`. If unhealthy, check `docker compose logs --tail=80 umami db` privately and inspect memory/restart counts. Revert to the last healthy SHA only if the schema is compatible; otherwise plan recovery into a **fresh** volume from the pre-release backup. Never run `down -v` on production. Changing `POSTGRES_PASSWORD` in `.env` alone does not rotate a password in an existing volume.
 

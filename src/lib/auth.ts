@@ -6,8 +6,10 @@ import {
   isApiKeyBlockedPath,
   isApiKeyEnabled,
 } from '@/lib/api-key';
+import { type BoardShareScope, resolveBoardShareScope } from '@/lib/board-share';
 import {
   AUTH_SESSION_TTL,
+  ENTITY_TYPE,
   PARTIAL_AUTH_TOKEN_TYPE,
   ROLE_PERMISSIONS,
   ROLES,
@@ -198,6 +200,41 @@ export async function hasPermission(role: string, permission: string | string[])
   return ensureArray(permission).some(e => ROLE_PERMISSIONS[role]?.includes(e));
 }
 
+function getIssuedBoardShareScope(token: any): BoardShareScope | null {
+  const readIds = (key: keyof BoardShareScope) => {
+    const value = token[key];
+
+    if (value === undefined) {
+      return [];
+    }
+
+    return Array.isArray(value) && value.every(id => typeof id === 'string') ? value : null;
+  };
+  const websiteIds = readIds('websiteIds');
+  const pixelIds = readIds('pixelIds');
+  const linkIds = readIds('linkIds');
+
+  if (!websiteIds || !pixelIds || !linkIds) {
+    return null;
+  }
+
+  return { websiteIds, pixelIds, linkIds };
+}
+
+function intersectBoardShareScope(issued: BoardShareScope, current: BoardShareScope) {
+  const restrict = (issuedIds: string[], currentIds: string[]) => {
+    const currentSet = new Set(currentIds);
+
+    return issuedIds.filter(id => currentSet.has(id));
+  };
+
+  return {
+    websiteIds: restrict(issued.websiteIds, current.websiteIds),
+    pixelIds: restrict(issued.pixelIds, current.pixelIds),
+    linkIds: restrict(issued.linkIds, current.linkIds),
+  };
+}
+
 export async function parseShareToken(request: Request) {
   try {
     const token: any = parseToken(request.headers.get(SHARE_TOKEN_HEADER), secret());
@@ -225,7 +262,37 @@ export async function parseShareToken(request: Request) {
 
     // Use the current parameters rather than the ones captured at mint time, so
     // turning a section off takes effect for tokens that are already issued.
-    return { ...token, parameters: share.parameters };
+    if (share.shareType !== ENTITY_TYPE.board) {
+      return { ...token, parameters: share.parameters };
+    }
+
+    const issuedScope = getIssuedBoardShareScope(token);
+    const current = await resolveBoardShareScope(share.entityId);
+
+    if (!issuedScope || !current) {
+      log('Board share token rejected: invalid current scope');
+      return null;
+    }
+
+    // Re-check the board's current owner, memberships, entity ownership and deletions.
+    // Intersect with issuance scope so an old token loses removed entities without
+    // automatically gaining entities that were added to the board later.
+    const scope = intersectBoardShareScope(issuedScope, current.scope);
+    const {
+      websiteId: _websiteId,
+      pixelId: _pixelId,
+      linkId: _linkId,
+      websiteIds: _websiteIds,
+      pixelIds: _pixelIds,
+      linkIds: _linkIds,
+      ...boardToken
+    } = token;
+
+    return {
+      ...boardToken,
+      ...scope,
+      parameters: share.parameters,
+    };
   } catch (e) {
     log(e);
     return null;

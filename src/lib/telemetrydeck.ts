@@ -4,7 +4,20 @@ const defaultSdkKeys = new Set([
   'TelemetryDeck.AppInfo.version',
   'TelemetryDeck.AppInfo.buildNumber',
   'TelemetryDeck.Device.modelName',
+  'TelemetryDeck.Device.operatingSystem',
+  'TelemetryDeck.Device.platform',
+  'TelemetryDeck.Device.orientation',
+  'TelemetryDeck.Device.screenResolutionWidth',
+  'TelemetryDeck.Device.screenResolutionHeight',
   'TelemetryDeck.Device.systemVersion',
+  'TelemetryDeck.RunContext.language',
+  'TelemetryDeck.UserPreference.colorScheme',
+  'TelemetryDeck.UserPreference.language',
+  'TelemetryDeck.UserPreference.region',
+  'TelemetryDeck.UserPreference.layoutDirection',
+  'TelemetryDeck.Error.category',
+  'TelemetryDeck.SDK.name',
+  'TelemetryDeck.SDK.version',
 ]);
 
 interface Options {

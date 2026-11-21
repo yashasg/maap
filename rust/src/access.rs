@@ -505,6 +505,10 @@ fn website_access_allowed(
     user_role: &str,
     access: Access,
 ) -> bool {
+    if !global_role_allows(user_role, access) {
+        return false;
+    }
+
     website.is_some_and(|(owner_id, team_role)| {
         user_role == "admin"
             || owner_id == Some(user_id)
@@ -708,6 +712,13 @@ fn internal_error(message: &str) -> Response {
     error_response(StatusCode::INTERNAL_SERVER_ERROR, message)
 }
 
+fn global_role_allows(role: &str, access: Access) -> bool {
+    match access {
+        Access::Read => matches!(role, "admin" | "user" | "view-only"),
+        Access::Write | Access::Delete => matches!(role, "admin" | "user"),
+    }
+}
+
 fn team_role_allows(role: &str, access: Access) -> bool {
     match access {
         Access::Read => matches!(
@@ -745,8 +756,10 @@ mod tests {
     }
 
     #[test]
-    fn admin_access_still_requires_a_live_website() {
+    fn global_and_target_permissions_are_both_required() {
         let user_id = Uuid::new_v4();
+        let other_id = Uuid::new_v4();
+
         assert!(!website_access_allowed(
             None,
             user_id,
@@ -758,6 +771,42 @@ mod tests {
             user_id,
             "admin",
             Access::Delete
+        ));
+        assert!(website_access_allowed(
+            Some((Some(user_id), None)),
+            user_id,
+            "view-only",
+            Access::Read
+        ));
+        assert!(!website_access_allowed(
+            Some((Some(user_id), None)),
+            user_id,
+            "view-only",
+            Access::Write
+        ));
+        assert!(!website_access_allowed(
+            Some((Some(other_id), Some("team-member".to_string()))),
+            user_id,
+            "view-only",
+            Access::Write
+        ));
+        assert!(website_access_allowed(
+            Some((Some(user_id), None)),
+            user_id,
+            "user",
+            Access::Write
+        ));
+        assert!(!website_access_allowed(
+            Some((Some(other_id), Some("team-view-only".to_string()))),
+            user_id,
+            "user",
+            Access::Write
+        ));
+        assert!(!website_access_allowed(
+            Some((Some(user_id), None)),
+            user_id,
+            "unknown",
+            Access::Read
         ));
     }
 

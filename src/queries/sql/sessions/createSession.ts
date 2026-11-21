@@ -50,7 +50,16 @@ export async function createSession(data: Prisma.SessionCreateInput) {
       {{distinctId}},
       {{createdAt}}
     )
-    on conflict (session_id) do nothing
+    on conflict (session_id) do update set
+      country = coalesce(session.country, excluded.country),
+      region = coalesce(session.region, excluded.region),
+      city = coalesce(session.city, excluded.city)
+    where session.website_id = excluded.website_id and excluded.country is not null
+      and (session.country is null or session.country = excluded.country)
+      and (session.region is null or excluded.region is null or session.region = excluded.region)
+      and (session.city is null or excluded.city is null or session.city = excluded.city)
+      and (session.country is null or (session.region is null and excluded.region is not null)
+           or (session.city is null and excluded.city is not null))
     `,
     normalizedData,
     FUNCTION_NAME,

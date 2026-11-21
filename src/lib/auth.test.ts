@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { resolveBoardShareScope } from '@/lib/board-share';
 import { AUTH_SESSION_TTL } from '@/lib/constants';
 import { hash } from '@/lib/crypto';
 import { createSecureToken, parseSecureToken, parseToken } from '@/lib/jwt';
@@ -21,6 +22,10 @@ vi.mock('@/lib/jwt', () => ({
 
 vi.mock('@/queries/prisma/user', () => ({
   getUser: vi.fn(),
+}));
+
+vi.mock('@/lib/board-share', () => ({
+  resolveBoardShareScope: vi.fn(),
 }));
 
 vi.mock('@/queries/prisma/share', () => ({
@@ -58,6 +63,7 @@ vi.mock('@/lib/redis', () => ({
 const createSecureTokenMock = vi.mocked(createSecureToken);
 const parseSecureTokenMock = vi.mocked(parseSecureToken);
 const parseTokenMock = vi.mocked(parseToken);
+const resolveBoardShareScopeMock = vi.mocked(resolveBoardShareScope);
 const getShareMock = vi.mocked(getShare);
 const getUserMock = vi.mocked(getUser);
 const getApiKeyByHashMock = vi.mocked(getApiKeyByHash);
@@ -95,6 +101,7 @@ beforeEach(() => {
   parseSecureTokenMock.mockReset();
   parseTokenMock.mockReset();
   parseTokenMock.mockReturnValue(null);
+  resolveBoardShareScopeMock.mockReset();
   getShareMock.mockReset();
   getUserMock.mockReset();
   getApiKeyByHashMock.mockReset();
@@ -465,6 +472,142 @@ describe('checkAuth share tokens', () => {
     expect(result?.authType).toBe('share');
     expect(result?.shareToken.websiteId).toBe('website-1');
     expect(result?.shareToken.parameters).toEqual({ overview: true, sessions: false });
+  });
+
+  test('rechecks a board scope and removes membership or ownership losses', async () => {
+    parseTokenMock.mockReturnValue({
+      type: 'share',
+      shareId: 'share-1',
+      shareType: 4,
+      boardId: 'board-1',
+      websiteIds: ['retained-site', 'removed-site'],
+      pixelIds: [],
+      linkIds: [],
+      parameters: {},
+    } as any);
+    getShareMock.mockResolvedValue({
+      id: 'share-1',
+      shareType: 4,
+      entityId: 'board-1',
+      parameters: { allowFilter: false },
+    } as any);
+    resolveBoardShareScopeMock.mockResolvedValue({
+      board: { id: 'board-1' } as any,
+      scope: {
+        websiteIds: ['retained-site', 'new-site'],
+        pixelIds: [],
+        linkIds: [],
+      },
+    });
+
+    const result: any = await checkAuth(shareRequest());
+
+    expect(result?.shareToken.websiteIds).toEqual(['retained-site']);
+    expect(result?.shareToken.parameters).toEqual({ allowFilter: false });
+  });
+
+  test('does not expand an existing board token when the board gains a new entity', async () => {
+    parseTokenMock.mockReturnValue({
+      type: 'share',
+      shareId: 'share-1',
+      shareType: 4,
+      boardId: 'board-1',
+      websiteIds: ['existing-site'],
+      pixelIds: [],
+      linkIds: [],
+    } as any);
+    getShareMock.mockResolvedValue({
+      id: 'share-1',
+      shareType: 4,
+      entityId: 'board-1',
+      parameters: {},
+    } as any);
+    resolveBoardShareScopeMock.mockResolvedValue({
+      board: { id: 'board-1' } as any,
+      scope: {
+        websiteIds: ['existing-site', 'new-site'],
+        pixelIds: [],
+        linkIds: [],
+      },
+    });
+
+    const result: any = await checkAuth(shareRequest());
+
+    expect(result?.shareToken.websiteIds).toEqual(['existing-site']);
+  });
+
+  test('keeps an existing valid board token scope when live access is unchanged', async () => {
+    const scope = {
+      websiteIds: ['website-1'],
+      pixelIds: ['pixel-1'],
+      linkIds: ['link-1'],
+    };
+    parseTokenMock.mockReturnValue({
+      type: 'share',
+      shareId: 'share-1',
+      shareType: 4,
+      boardId: 'board-1',
+      ...scope,
+    } as any);
+    getShareMock.mockResolvedValue({
+      id: 'share-1',
+      shareType: 4,
+      entityId: 'board-1',
+      parameters: {},
+    } as any);
+    resolveBoardShareScopeMock.mockResolvedValue({
+      board: { id: 'board-1' } as any,
+      scope,
+    });
+
+    const result: any = await checkAuth(shareRequest());
+
+    expect(result?.shareToken).toMatchObject(scope);
+  });
+
+  test('rejects a board token when the current board ownership is missing or inconsistent', async () => {
+    parseTokenMock.mockReturnValue({
+      type: 'share',
+      shareId: 'share-1',
+      shareType: 4,
+      boardId: 'board-1',
+      websiteIds: [],
+      pixelIds: [],
+      linkIds: [],
+    } as any);
+    getShareMock.mockResolvedValue({
+      id: 'share-1',
+      shareType: 4,
+      entityId: 'board-1',
+      parameters: {},
+    } as any);
+    resolveBoardShareScopeMock.mockResolvedValue(null);
+
+    expect(await checkAuth(shareRequest())).toBeNull();
+  });
+
+  test('rejects malformed board scope claims instead of trusting them', async () => {
+    parseTokenMock.mockReturnValue({
+      type: 'share',
+      shareId: 'share-1',
+      shareType: 4,
+      boardId: 'board-1',
+      websiteIds: 'website-1',
+      pixelIds: [],
+      linkIds: [],
+    } as any);
+    getShareMock.mockResolvedValue({
+      id: 'share-1',
+      shareType: 4,
+      entityId: 'board-1',
+      parameters: {},
+    } as any);
+    resolveBoardShareScopeMock.mockResolvedValue({
+      board: { id: 'board-1' } as any,
+      scope: { websiteIds: ['website-1'], pixelIds: [], linkIds: [] },
+    });
+
+    expect(await checkAuth(shareRequest())).toBeNull();
   });
 });
 
