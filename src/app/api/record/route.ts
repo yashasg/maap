@@ -1,6 +1,7 @@
 import { isbot } from 'isbot';
 import { serializeError } from 'serialize-error';
 import { z } from 'zod';
+import { isAllowedCollectionOrigin } from '@/lib/collection-origin';
 import { CACHE_TOKEN_TYPE, HEATMAP_EVENT_TYPE } from '@/lib/constants';
 import { corsPreflight, withCorsHeaders } from '@/lib/cors';
 import { secret } from '@/lib/crypto';
@@ -160,6 +161,11 @@ export async function POST(request: Request) {
 
     if (!website) {
       return withCorsHeaders(badRequest({ message: 'Website not found.' }));
+    }
+    if (!isAllowedCollectionOrigin(request.headers, website.domain)) {
+      return withCorsHeaders(
+        forbidden({ message: 'Origin does not match the registered website domain.' }),
+      );
     }
 
     const recorderConfig = getRecorderConfig(website.replayConfig);

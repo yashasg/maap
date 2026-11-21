@@ -1,5 +1,6 @@
 import { isbot } from 'isbot';
 import clickhouse from '@/lib/clickhouse';
+import { isAllowedCollectionOrigin } from '@/lib/collection-origin';
 import { type CollectionCache, resolveIdentifiedSession } from '@/lib/collection-session';
 import { CACHE_TOKEN_TYPE, COLLECTION_TYPE, EVENT_TYPE, FIELD_LENGTH } from '@/lib/constants';
 import { hash, secret } from '@/lib/crypto';
@@ -75,11 +76,14 @@ export async function POST(request: Request) {
       }
 
       // Find website. Account collection blocks are enforced by the cloud gateway.
-      if (!cache?.websiteId) {
+      if (!cache?.websiteId || request.headers.has('origin')) {
         const website = await fetchWebsite(websiteId);
 
         if (!website) {
           return badRequest({ message: 'Website not found.' });
+        }
+        if (!isAllowedCollectionOrigin(request.headers, website.domain, payload)) {
+          return forbidden({ message: 'Origin does not match the registered website domain.' });
         }
       }
     }

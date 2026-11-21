@@ -89,6 +89,16 @@ test('accepts browser errors for any existing website', async () => {
   );
 });
 
+test('rejects dashboard error collection before creating a session', async () => {
+  mocks.findUnique.mockResolvedValue({ id: payload.website, domain: 'kashiworks.com' });
+  const request = createRequest();
+  request.headers.set('origin', 'https://maap.kashiworks.com');
+  const response = await collectError(request, payload);
+  expect(response.status).toBe(403);
+  expect(mocks.createSession).not.toHaveBeenCalled();
+  expect(mocks.saveError).not.toHaveBeenCalled();
+});
+
 // After identify reuses the anonymous session, errors must land in that same session.
 test('resolves the session with the same identity rules as tracked events', async () => {
   const identified = { ...payload, id: 'user-1' };

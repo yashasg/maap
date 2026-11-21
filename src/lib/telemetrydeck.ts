@@ -22,6 +22,7 @@ const defaultSdkKeys = new Set([
 
 interface Options {
   hostname?: string;
+  browserOrigin?: string;
   testWebsiteId?: string;
   allowedKeys?: ReadonlySet<string>;
 }
@@ -123,18 +124,27 @@ export function mapSignal(signal: unknown, options: Options = {}, now = Date.now
   const height = dimension(props['TelemetryDeck.Device.screenResolutionHeight']);
   const nav = signal.type === 'TelemetryDeck.Navigation.pathChanged';
   const destination = nav ? props['TelemetryDeck.Navigation.destinationPath'] : '';
+  const browserOrigin =
+    options.browserOrigin !== undefined ? new URL(options.browserOrigin) : undefined;
+  if (browserOrigin && !['http:', 'https:'].includes(browserOrigin.protocol)) {
+    throw new Error('Invalid browser origin');
+  }
   return {
     type: 'event',
     payload: {
       website: website.toLowerCase(),
       hostname:
-        options.hostname || (isMac ? 'app.macos' : isAndroid ? 'app.android' : 'app.ios'),
-      id,
+        browserOrigin?.hostname ||
+        options.hostname ||
+        (isMac ? 'app.macos' : isAndroid ? 'app.android' : 'app.ios'),
+      // Browser SDK clientUser can be regenerated on every reload. Use send's
+      // rotating IP/real-UA anonymous identity instead; native IDs stay intact.
+      id: browserOrigin ? undefined : id,
       timestamp: eventTimestamp(signal.receivedAt, now),
-      userAgent,
-      browser: appVersion ? `App ${appVersion}` : undefined,
-      os: os || undefined,
-      device,
+      userAgent: browserOrigin ? undefined : userAgent,
+      browser: !browserOrigin && appVersion ? `App ${appVersion}` : undefined,
+      os: browserOrigin ? undefined : os || undefined,
+      device: browserOrigin ? undefined : device,
       screen: width && height ? `${width}x${height}` : undefined,
       language: props['TelemetryDeck.UserPreference.language'] ?? props.preferredLanguage,
       url: `/${(destination || '').replace(/^[\\/]+/, '')}`,
@@ -172,7 +182,10 @@ export async function ingestBatch(
   let dropped = 0;
   for (const signal of batch) {
     try {
-      const body = mapSignal(signal, options);
+      const body = mapSignal(signal, {
+        ...options,
+        browserOrigin: request.headers.get('origin') ?? undefined,
+      });
       if (!body) {
         dropped++;
         continue;

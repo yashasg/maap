@@ -104,7 +104,7 @@ describe('record route cache token binding', () => {
   const sessionId = '33333333-3333-4333-8333-333333333333';
   const visitId = '44444444-4444-4444-8444-444444444444';
 
-  function post(website: string) {
+  function post(website: string, headers: Record<string, string> = {}) {
     parseRequestMock.mockResolvedValue({
       body: {
         type: 'record',
@@ -116,7 +116,7 @@ describe('record route cache token binding', () => {
     return POST(
       new Request('http://localhost/api/record', {
         method: 'POST',
-        headers: { 'x-umami-cache': 'token' },
+        headers: { 'x-umami-cache': 'token', ...headers },
       }),
     );
   }
@@ -124,6 +124,7 @@ describe('record route cache token binding', () => {
   beforeEach(() => {
     vi.mocked(getWebsite).mockResolvedValue({
       id: websiteId,
+      domain: 'kashiworks.com',
       recorderEnabled: true,
       replayConfig: { replayEnabled: true },
     } as any);
@@ -177,5 +178,12 @@ describe('record route cache token binding', () => {
     expect(saveRecording).toHaveBeenCalledWith(
       expect.objectContaining({ websiteId, sessionId, visitId }),
     );
+  });
+
+  test('a production cache token cannot record the dashboard origin', async () => {
+    vi.mocked(parseToken).mockResolvedValue({ type: 'cache', websiteId, sessionId, visitId });
+    const response = await post(websiteId, { origin: 'https://maap.kashiworks.com' });
+    expect(response.status).toBe(403);
+    expect(saveRecording).not.toHaveBeenCalled();
   });
 });

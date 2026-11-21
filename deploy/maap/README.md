@@ -45,6 +45,39 @@ For manual setup or inspection on the host:
 
 ## Bootstrap Umami and verify a release
 
+### Browser identity and collection isolation
+
+Browser POSTs to `/api/send`, `/api/batch`, `/v2` (including namespace routes),
+error collection, and `/api/record` must have an `Origin` hostname matching the
+website's registered domain. `www` is equivalent to the bare hostname; other
+subdomains are not. Thus `maap.kashiworks.com` cannot collect for `kashiworks.com`.
+Payload hostnames and page URLs must also match for event/error collection.
+Checks apply even with a valid cached session token. This prevents accidental
+cross-site collection, not forged server requests: Origin is not authentication.
+Native/server SDK requests without Origin retain their existing behavior.
+
+For browser `/v2` requests, Maap ignores `clientUser` for visitor identity and uses
+its existing anonymous session fingerprint: website ID, network IP, actual browser
+User-Agent, and rotating server salt. Reloads within that salt period count new
+pageviews without inventing new visitors. This uses no cookies or persistent
+browser identifiers; IP/UA changes and salt rotation can still split visitors,
+and shared IP/UA can merge them. Native `/v2` identities and app dimensions are unchanged.
+
+**Kashiworks client contract:** keep appID `aa373682-082b-4b6c-baa8-8736d78d6c8d`
+and collector `https://maap.kashiworks.com/v2/`. Send
+`TelemetryDeck.Navigation.pathChanged` once per actual page view, with
+`TelemetryDeck.Navigation.destinationPath` set to the page path (including any
+desired query/hash). Browser fetch supplies Origin and User-Agent automatically.
+No client identity change is required, even if the JavaScript SDK still generates
+a random clientUser on reload. Do not replace it with a shared ID or persist it.
+If forwarding through a server proxy, preserve the browser Origin, User-Agent,
+and trusted client-IP context; otherwise the request is treated as native.
+
+The Maap test console is a local, in-memory payload preview, not an ingestion
+test. It installs neither tracker nor recorder, never writes production data,
+and discards its preview when unmounted. No historical analytics are rewritten
+by these collection changes.
+
 Use the supplied protected URL, not a direct origin or a public port. These checks are **not yet performed**:
 
 - [ ] `db` and `umami` healthy, connector running; no published ports. Confirm configured memory limits (`umami` 450 MiB, `db` 200 MiB, `cloudflared` 64 MiB) and observe available headroom under representative load. The Node heap limit (256 MiB) is not its total process memory.

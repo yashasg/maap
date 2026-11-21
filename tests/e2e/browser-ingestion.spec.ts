@@ -13,7 +13,7 @@ test('cross-origin browser ingestion persists events and exposes errors', async 
   const website = randomUUID();
   const created = await request.post('/api/websites', {
     headers: authHeaders(auth),
-    data: { id: website, name: 'Browser ingestion', domain: 'browser.example' },
+    data: { id: website, name: 'Browser ingestion', domain: 'localhost' },
   });
   expect(created.status()).toBe(200);
 
@@ -29,7 +29,7 @@ test('cross-origin browser ingestion persists events and exposes errors', async 
     });
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('Missing browser origin port');
-    const browserOrigin = `http://127.0.0.1:${address.port}`;
+    const browserOrigin = `http://localhost:${address.port}`;
     expect(browserOrigin).not.toBe(new URL(baseURL).origin);
     await page.goto(browserOrigin);
 
@@ -49,7 +49,7 @@ test('cross-origin browser ingestion persists events and exposes errors', async 
       const eventPath = `/browser-ingestion/${index}`;
       const event = {
         type: 'event',
-        payload: { website, hostname: 'browser.example', url: eventPath },
+        payload: { website, hostname: 'localhost', url: eventPath },
       };
       const body = path.startsWith('/v2')
         ? [
@@ -150,6 +150,54 @@ test('cross-origin browser ingestion persists events and exposes errors', async 
       expect.arrayContaining(expectedPaths.map(x => ({ x, y: 1 }))),
     );
     expect(await metrics.json()).toHaveLength(expectedPaths.length);
+
+    // New documents have neither the in-memory tracker cache nor the SDK's old clientUser.
+    for (let reload = 0; reload < 5; reload++) {
+      await page.reload();
+      const result = await page.evaluate(
+        async ({ collector, website, reload }) => {
+          const response = await fetch(`${collector}/v2/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([
+              {
+                appID: website,
+                clientUser: String(reload).repeat(64),
+                type: 'TelemetryDeck.Navigation.pathChanged',
+                payload: { 'TelemetryDeck.Navigation.destinationPath': '/reload' },
+              },
+            ]),
+          });
+          return response.json();
+        },
+        { collector: baseURL, website, reload },
+      );
+      expect(result).toEqual({ accepted: 1, rejected: 0, dropped: 0 });
+    }
+    const statsUrl = `/api/websites/${website}/stats`;
+    const statsParams = { startAt, endAt: Date.now() + 1000 };
+    const before = await (
+      await request.get(statsUrl, { headers: authHeaders(auth), params: statsParams })
+    ).json();
+    expect(Number(before.visitors)).toBe(1);
+    expect(Number(before.pageviews)).toBe(expectedPaths.length + 5);
+
+    // A cached website token must not authorize a different browser origin.
+    for (const url of [`/console/${website}`, '/websites', '/']) {
+      const response = await request.post('/api/send', {
+        headers: { origin: 'https://maap.kashiworks.com', 'x-umami-cache': cache },
+        data: { type: 'event', payload: { website, hostname: 'maap.kashiworks.com', url } },
+      });
+      expect(response.status()).toBe(403);
+    }
+    const after = await (
+      await request.get(statsUrl, {
+        headers: authHeaders(auth),
+        params: { ...statsParams, endAt: Date.now() + 1000 },
+      })
+    ).json();
+    expect(after.visitors).toBe(before.visitors);
+    expect(after.pageviews).toBe(before.pageviews);
 
     const unauthorized = await request.get(metricsPath, { params });
     expect(unauthorized.status()).toBe(401);

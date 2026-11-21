@@ -458,6 +458,91 @@ pub fn extract_client_ip(headers: &HeaderMap) -> String {
     "127.0.0.1".to_string()
 }
 
+fn browser_origin(headers: &HeaderMap) -> Option<Url> {
+    let origin = Url::parse(headers.get(header::ORIGIN)?.to_str().ok()?).ok()?;
+    (matches!(origin.scheme(), "http" | "https")
+        && origin.host_str().is_some()
+        && origin.username().is_empty()
+        && origin.password().is_none()
+        && origin.path() == "/"
+        && origin.query().is_none()
+        && origin.fragment().is_none())
+    .then_some(origin)
+}
+
+pub(super) fn is_allowed_collection_origin(
+    headers: &HeaderMap,
+    domain: Option<&str>,
+    hostname: Option<&str>,
+    url: Option<&str>,
+) -> bool {
+    // Origin is browser context, not authentication. Native/server SDKs omit it.
+    if !headers.contains_key(header::ORIGIN) {
+        return true;
+    }
+    let Some(origin) = browser_origin(headers) else {
+        return false;
+    };
+    let Some(domain) = domain.filter(|domain| !domain.is_empty()) else {
+        return false;
+    };
+    let domain = if domain.contains("://") {
+        domain.to_string()
+    } else {
+        format!("https://{domain}")
+    };
+    let Ok(registered) = Url::parse(&domain) else {
+        return false;
+    };
+    let canonical = |url: &Url| {
+        url.host_str().map(|host| {
+            host.strip_prefix("www.")
+                .unwrap_or(host)
+                .trim_end_matches('.')
+                .to_string()
+        })
+    };
+    let expected = canonical(&registered);
+    expected.is_some()
+        && canonical(&origin) == expected
+        && hostname
+            .filter(|value| !value.is_empty())
+            .is_none_or(|host| {
+                Url::parse(&format!("https://{host}")).is_ok_and(|url| canonical(&url) == expected)
+            })
+        && url.filter(|value| !value.is_empty()).is_none_or(|url| {
+            origin
+                .join(url)
+                .is_ok_and(|url| canonical(&url) == expected)
+        })
+}
+
+fn map_signal_for_request(
+    signal: &Value,
+    options: &TdOptions,
+    now_ms: i64,
+    headers: &HeaderMap,
+) -> SignalDisposition {
+    let mut disposition = map_signal(signal, options, now_ms);
+    if headers.contains_key(header::ORIGIN) {
+        let Some(origin) = browser_origin(headers) else {
+            return SignalDisposition::Rejected;
+        };
+        if let SignalDisposition::Mapped(envelope) = &mut disposition {
+            let payload = &mut envelope.payload;
+            // Reload-random SDK IDs are not browser visitors. Let collection use
+            // the existing rotating IP/real-UA fingerprint, without persistent storage.
+            payload.id = None;
+            payload.user_agent = None;
+            payload.browser = None;
+            payload.os = None;
+            payload.device = None;
+            payload.hostname = origin.host_str().map(str::to_string);
+        }
+    }
+    disposition
+}
+
 pub fn extract_location_headers(
     headers: &HeaderMap,
 ) -> (Option<String>, Option<String>, Option<String>) {
@@ -1670,15 +1755,27 @@ async fn persist_error(
         .map_err(|_| bad_request("Invalid eventId."))?;
     let created_at = DateTime::<Utc>::from_timestamp_millis(payload.timestamp.unwrap_or_default())
         .ok_or_else(|| bad_request("Invalid timestamp."))?;
-    let website: Option<(Option<DateTime<Utc>>,)> =
-        sqlx::query_as("SELECT reset_at FROM website WHERE website_id = $1 AND deleted_at IS NULL")
-            .bind(website_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
-    let Some((reset_at,)) = website else {
+    let website: Option<(Option<DateTime<Utc>>, Option<String>)> = sqlx::query_as(
+        "SELECT reset_at, domain FROM website WHERE website_id = $1 AND deleted_at IS NULL",
+    )
+    .bind(website_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    let Some((reset_at, domain)) = website else {
         return Err(bad_request("Website not found."));
     };
+    if !is_allowed_collection_origin(
+        headers,
+        domain.as_deref(),
+        payload.hostname.as_deref(),
+        payload.url.as_deref(),
+    ) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Origin does not match the registered website domain.".to_string(),
+        ));
+    }
     if created_at > Utc::now() + chrono::Duration::minutes(5)
         || reset_at.is_some_and(|reset_at| created_at <= reset_at)
     {
@@ -1887,16 +1984,27 @@ async fn persist_send_envelope(
         .as_deref()
         .and_then(|value| Uuid::parse_str(value).ok());
     let cache = website_id.and_then(|website_id| parse_cache(headers, website_id));
-    if website_id.is_some() && cache.is_none() {
-        let exists: Option<(Uuid,)> = sqlx::query_as(
-            "SELECT website_id FROM website WHERE website_id = $1 AND deleted_at IS NULL",
+    if website_id.is_some() && (cache.is_none() || headers.contains_key(header::ORIGIN)) {
+        let website: Option<(Option<String>,)> = sqlx::query_as(
+            "SELECT domain FROM website WHERE website_id = $1 AND deleted_at IS NULL",
         )
         .bind(source_id)
         .fetch_optional(pool)
         .await
         .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
-        if exists.is_none() {
+        let Some((domain,)) = website else {
             return Err(bad_request("Website not found."));
+        };
+        if !is_allowed_collection_origin(
+            headers,
+            domain.as_deref(),
+            payload.hostname.as_deref(),
+            payload.url.as_deref(),
+        ) {
+            return Err((
+                StatusCode::FORBIDDEN,
+                "Origin does not match the registered website domain.".to_string(),
+            ));
         }
     }
     let ip = payload
@@ -2280,7 +2388,7 @@ pub(super) async fn handle_v2(
     let mut dropped = 0usize;
 
     for signal in &batch {
-        match map_signal(signal, &state.td_options, now_ms) {
+        match map_signal_for_request(signal, &state.td_options, now_ms, &headers) {
             SignalDisposition::Dropped => dropped += 1,
             SignalDisposition::Rejected => rejected += 1,
             SignalDisposition::Mapped(env) => {
@@ -2308,6 +2416,124 @@ pub(super) async fn handle_v2(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn browser_origin_requires_registered_host_not_sibling_subdomains() {
+        let mut headers = HeaderMap::new();
+        assert!(is_allowed_collection_origin(
+            &headers,
+            Some("app.ios"),
+            None,
+            None
+        ));
+        for origin in ["https://kashiworks.com", "https://WWW.KASHIWORKS.COM:8443"] {
+            headers.insert(header::ORIGIN, origin.parse().unwrap());
+            assert!(is_allowed_collection_origin(
+                &headers,
+                Some("kashiworks.com"),
+                None,
+                Some("/products")
+            ));
+            assert!(!is_allowed_collection_origin(
+                &headers,
+                Some("kashiworks.com"),
+                Some("maap.kashiworks.com"),
+                None
+            ));
+            assert!(!is_allowed_collection_origin(
+                &headers,
+                Some("kashiworks.com"),
+                None,
+                Some("//maap.kashiworks.com/")
+            ));
+            assert!(!is_allowed_collection_origin(&headers, None, None, None));
+        }
+        for origin in [
+            "https://maap.kashiworks.com",
+            "https://kashiworks.com.evil.example",
+            "null",
+            "",
+            "file:///tmp/page",
+            "https://user@kashiworks.com",
+            "https://kashiworks.com/path",
+        ] {
+            headers.insert(header::ORIGIN, origin.parse().unwrap());
+            assert!(
+                !is_allowed_collection_origin(&headers, Some("kashiworks.com"), None, None),
+                "{origin}"
+            );
+        }
+    }
+
+    #[test]
+    fn browser_reloads_use_anonymous_identity_but_native_mapping_is_unchanged() {
+        let website = Uuid::new_v4();
+        let created_at = Utc::now();
+        let options = TdOptions {
+            hostname: Some("app.ios".to_string()),
+            ..Default::default()
+        };
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("https://kashiworks.com"),
+        );
+        let mut sessions = HashSet::new();
+        for id in ['a', 'b', 'c', 'd', 'e'] {
+            let signal = json!({
+                "appID": website,
+                "clientUser": id.to_string().repeat(64),
+                "type": "TelemetryDeck.Navigation.pathChanged",
+                "payload": { "TelemetryDeck.Navigation.destinationPath": "/products" }
+            });
+            let SignalDisposition::Mapped(mapped) =
+                map_signal_for_request(&signal, &options, created_at.timestamp_millis(), &headers)
+            else {
+                panic!("expected browser signal")
+            };
+            assert_eq!(mapped.payload.hostname.as_deref(), Some("kashiworks.com"));
+            assert_eq!(mapped.payload.url.as_deref(), Some("/products"));
+            assert_eq!(mapped.payload.name, None);
+            assert_eq!(mapped.payload.id, None);
+            assert_eq!(mapped.payload.user_agent, None);
+            assert_eq!(mapped.payload.device, None);
+            assert_eq!(mapped.payload.browser, None);
+            sessions.insert(session_id_for(
+                website,
+                "203.0.113.5",
+                "Browser/1",
+                mapped.payload.id.as_deref(),
+                None,
+                created_at,
+            ));
+            assert_eq!(
+                map_signal_for_request(
+                    &signal,
+                    &options,
+                    created_at.timestamp_millis(),
+                    &HeaderMap::new()
+                ),
+                map_signal(&signal, &options, created_at.timestamp_millis()),
+            );
+        }
+        assert_eq!(sessions.len(), 1);
+        assert!(!sessions.contains(&session_id_for(
+            website,
+            "203.0.113.6",
+            "Browser/1",
+            None,
+            None,
+            created_at
+        )));
+        assert!(!sessions.contains(&session_id_for(
+            website,
+            "203.0.113.5",
+            "Browser/2",
+            None,
+            None,
+            created_at
+        )));
+    }
 
     fn event(payload: SendPayload) -> SendEnvelope {
         SendEnvelope {

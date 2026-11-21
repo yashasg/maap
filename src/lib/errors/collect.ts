@@ -1,5 +1,6 @@
 import { isbot } from 'isbot';
 import clickhouse from '@/lib/clickhouse';
+import { isAllowedCollectionOrigin } from '@/lib/collection-origin';
 import { type CollectionCache, resolveIdentifiedSession } from '@/lib/collection-session';
 import { CACHE_TOKEN_TYPE } from '@/lib/constants';
 import { withCorsHeaders } from '@/lib/cors';
@@ -45,6 +46,11 @@ export async function collectError(request: Request, payload: ErrorPayload) {
     const website = await prisma.client.website.findUnique({ where: { id: payload.website } });
     if (!website || website.deletedAt)
       return respond(badRequest({ message: 'Website not found.' }));
+    if (!isAllowedCollectionOrigin(request.headers, website.domain, payload)) {
+      return respond(
+        forbidden({ message: 'Origin does not match the registered website domain.' }),
+      );
+    }
     if (
       payload.timestamp > Date.now() + 300000 ||
       (website.resetAt && payload.timestamp <= +website.resetAt)
