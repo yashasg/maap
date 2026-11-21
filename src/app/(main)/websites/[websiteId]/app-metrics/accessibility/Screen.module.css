@@ -1,0 +1,103 @@
+.screen {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.header {
+  flex-wrap: wrap;
+}
+
+.intro {
+  max-width: 48rem;
+}
+
+.note {
+  max-width: 44rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  min-height: 22rem;
+}
+
+.card:last-child {
+  grid-column: 1 / 2;
+}
+
+.state {
+  min-height: 15rem;
+}
+
+.breakdown {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.8fr) minmax(13rem, 1.2fr);
+  align-items: center;
+  gap: 1rem;
+  min-height: 15rem;
+}
+
+.chart {
+  min-width: 0;
+}
+
+.legend {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendRow {
+  display: grid;
+  grid-template-columns: 0.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  color: var(--zen-fg-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.footer {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--zen-border);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .breakdown {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

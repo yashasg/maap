@@ -295,7 +295,22 @@ export async function deleteWebsite(websiteId: string) {
 
   return transaction(
     async tx => {
+      const lockedWebsites = (await tx.$queryRawUnsafe(
+        `SELECT website_id
+         FROM website
+         WHERE website_id = $1 AND deleted_at IS NULL
+         FOR UPDATE`,
+        websiteId,
+      )) as { website_id: string }[];
+      if (lockedWebsites.length === 0) {
+        throw new Error('Website not found');
+      }
+
       await deleteWebsiteDependentData(tx, websiteId);
+
+      await tx.notebook.deleteMany({
+        where: { websiteId },
+      });
 
       await tx.report.deleteMany({
         where: { websiteId },

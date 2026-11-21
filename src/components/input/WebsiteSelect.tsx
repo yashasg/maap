@@ -36,8 +36,8 @@ export function WebsiteSelect({
   const listItems: { id: string; name: string }[] = data?.data || [];
 
   useEffect(() => {
-    setName(website?.name);
-  }, [website?.name]);
+    setName(websiteId ? website?.name : undefined);
+  }, [website?.name, websiteId]);
 
   const handleSearch = (value: string) => {
     setSearch(value);

@@ -17,6 +17,8 @@ test.describe('Login tests', () => {
   });
 
   test('shows validation for blank inputs or incorrect credentials', async ({ page }) => {
+    const uncaught: Error[] = [];
+    page.on('pageerror', error => uncaught.push(error));
     await page.getByTestId('button-submit').click();
     await expect(page.getByTestId('input-username').getByText(/Required/i)).toBeVisible();
     await expect(page.getByTestId('input-password').getByText(/Required/i)).toBeVisible();
@@ -26,5 +28,9 @@ test.describe('Login tests', () => {
     await page.getByTestId('button-submit').click();
 
     await expect(page.getByText(/Incorrect username and\/or password./i)).toBeVisible();
+    await page.getByTestId('input-password').locator('input').fill(umamiUser.password);
+    await page.getByTestId('button-submit').click();
+    await expect(page).toHaveURL(/\/websites$/);
+    expect(uncaught.map(error => error.message)).toEqual([]);
   });
 });

@@ -17,7 +17,7 @@ import { ChevronRight, User, Users } from '@/components/icons';
 import { LAST_TEAM_CONFIG } from '@/lib/constants';
 import { removeItem } from '@/lib/storage';
 
-export function TeamsButton() {
+export function TeamsButton({ compact = false }: { compact?: boolean }) {
   const { user } = useLoginQuery();
   const { t, labels } = useMessages();
   const { teamId, router } = useNavigation();
@@ -59,8 +59,8 @@ export function TeamsButton() {
           position="relative"
           gap
           maxHeight="40px"
-          minWidth={isPhone ? '100px' : '200px'}
-          maxWidth="200px"
+          minWidth={isPhone ? '100px' : compact ? '140px' : '200px'}
+          maxWidth={compact ? '160px' : '200px'}
         >
           <Icon>{teamId ? <Users /> : <User />}</Icon>
           <Text truncate>{label}</Text>

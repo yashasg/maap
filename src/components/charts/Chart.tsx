@@ -15,8 +15,6 @@ import { Legend } from '@/components/metrics/Legend';
 import { getChartBucketIndex } from '@/lib/charts';
 import { DEFAULT_ANIMATION_DURATION } from '@/lib/constants';
 
-ChartJS.defaults.font.family = 'Inter';
-
 export interface ChartProps extends BoxProps {
   type?: 'bar' | 'bubble' | 'doughnut' | 'pie' | 'line' | 'polarArea' | 'radar' | 'scatter';
   chartData?: ChartData<any, any, unknown> & { focusLabel?: string };
@@ -171,6 +169,7 @@ export function Chart({
   // Create chart
   useEffect(() => {
     if (canvas.current) {
+      ChartJS.defaults.font.family = getComputedStyle(canvas.current).fontFamily;
       chart.current = new ChartJS(canvas.current, {
         type,
         data: chartData,
@@ -179,6 +178,10 @@ export function Chart({
       });
 
       setLegendItems(chart.current.legend.legendItems);
+      const instance = chart.current;
+      document.fonts?.ready.then(() => {
+        if (instance.canvas) instance.update('none');
+      });
     }
 
     return () => {

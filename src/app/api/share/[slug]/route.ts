@@ -1,16 +1,12 @@
-import { getBoardEntityIds } from '@/lib/boards';
+import { resolveBoardShareScope } from '@/lib/board-share';
 import { ENTITY_TYPE, ROLES, SHARE_TOKEN_TYPE } from '@/lib/constants';
 import { secret } from '@/lib/crypto';
 import { createToken } from '@/lib/jwt';
 import prisma from '@/lib/prisma';
 import redis from '@/lib/redis';
 import { json, notFound } from '@/lib/response';
-import type { Auth, BoardParameters, WhiteLabel } from '@/lib/types';
-import { canViewLink, canViewPixel, canViewWebsite } from '@/permissions';
-import { getBoard, getLink, getPixel, getShareByCode, getUser, getWebsite } from '@/queries/prisma';
-
-type BoardEntityIds = ReturnType<typeof getBoardEntityIds>;
-type OwnedEntity = { userId?: string | null; teamId?: string | null } | null;
+import type { WhiteLabel } from '@/lib/types';
+import { getLink, getPixel, getShareByCode, getWebsite } from '@/queries/prisma';
 
 async function getAccountId(entity: { userId?: string; teamId?: string }): Promise<string | null> {
   if (entity.userId) {
@@ -48,74 +44,6 @@ async function getWhiteLabel(accountId: string): Promise<WhiteLabel | null> {
   return null;
 }
 
-async function filterEntityIds(
-  ids: string[],
-  canView: (id: string) => Promise<boolean>,
-): Promise<string[]> {
-  const results = await Promise.all(
-    ids.map(async id => {
-      try {
-        return (await canView(id)) ? id : null;
-      } catch {
-        return null;
-      }
-    }),
-  );
-
-  return results.filter((id): id is string => !!id);
-}
-
-// A team board share only exposes entities the team itself owns. Entities owned by individual
-// members are excluded: any member who can edit the board can create a share, including members
-// who are not allowed to view a teammate's personal website.
-function isOwnedByTeam(entity: OwnedEntity, teamId: string) {
-  return entity?.teamId === teamId;
-}
-
-async function filterBoardEntityIdsForShare(
-  entity: { userId?: string | null; teamId?: string | null },
-  ids: BoardEntityIds,
-): Promise<BoardEntityIds> {
-  if (entity.teamId) {
-    return {
-      websiteIds: await filterEntityIds(ids.websiteIds, async id =>
-        isOwnedByTeam(await getWebsite(id), entity.teamId),
-      ),
-      pixelIds: await filterEntityIds(ids.pixelIds, async id =>
-        isOwnedByTeam(await getPixel(id), entity.teamId),
-      ),
-      linkIds: await filterEntityIds(ids.linkIds, async id =>
-        isOwnedByTeam(await getLink(id), entity.teamId),
-      ),
-    };
-  }
-
-  if (!entity.userId) {
-    return { websiteIds: [], pixelIds: [], linkIds: [] };
-  }
-
-  const user = await getUser(entity.userId);
-
-  if (!user) {
-    return { websiteIds: [], pixelIds: [], linkIds: [] };
-  }
-
-  const auth: Auth = {
-    user: {
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      isAdmin: user.role === ROLES.admin,
-    },
-  };
-
-  return {
-    websiteIds: await filterEntityIds(ids.websiteIds, id => canViewWebsite(auth, id)),
-    pixelIds: await filterEntityIds(ids.pixelIds, id => canViewPixel(auth, id)),
-    linkIds: await filterEntityIds(ids.linkIds, id => canViewLink(auth, id)),
-  };
-}
-
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
@@ -134,18 +62,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   let entity: { userId?: string; teamId?: string } | null = null;
 
   if (share.shareType === ENTITY_TYPE.board) {
-    const board = await getBoard(share.entityId);
-    if (!board) return notFound();
-    entity = board;
+    const resolved = await resolveBoardShareScope(share.entityId);
+    if (!resolved) return notFound();
+    entity = resolved.board;
     data.boardId = share.entityId;
-    const boardEntityIds = getBoardEntityIds({
-      type: board.type,
-      parameters: board.parameters as BoardParameters,
-    });
-    const authorizedEntityIds = await filterBoardEntityIdsForShare(board, boardEntityIds);
-    data.websiteIds = authorizedEntityIds.websiteIds;
-    data.pixelIds = authorizedEntityIds.pixelIds;
-    data.linkIds = authorizedEntityIds.linkIds;
+    data.websiteIds = resolved.scope.websiteIds;
+    data.pixelIds = resolved.scope.pixelIds;
+    data.linkIds = resolved.scope.linkIds;
   } else if (share.shareType === ENTITY_TYPE.website) {
     entity = await getWebsite(share.entityId);
     if (!entity) return notFound();

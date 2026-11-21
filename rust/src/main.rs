@@ -49,15 +49,29 @@ use collection::*;
 use metrics::*;
 
 mod access;
+mod acquisition_report;
+mod activation_report;
 mod analytics_api;
+mod app_overview;
+mod app_reports_accessibility;
+mod app_reports_devices;
+mod app_reports_versions;
+mod app_settings;
 mod boards;
 mod dashboard_api;
 mod error_reports;
+mod event_types;
 mod insights;
+mod lifecycle;
+mod notebooks;
 mod properties;
 mod property_predicate;
+mod retention_report;
 mod shares;
 mod website_ops;
+mod workspace_card_metrics;
+mod workspace_folders;
+mod workspace_poll;
 
 type Aes256Gcm16 = AesGcm<Aes256, U16>;
 
@@ -819,6 +833,19 @@ pub fn build_router(state: AppState) -> Router {
         );
     let router = dashboard_api::register_dashboard_routes(router);
     let router = analytics_api::register_analytics_routes(router);
+    let router = router.route(
+        "/api/websites/{website_id}/app-reports/overview",
+        get(app_overview::get_app_overview),
+    );
+    let router = acquisition_report::register_routes(router);
+    let router = activation_report::register_routes(router);
+    let router = retention_report::register_routes(router);
+    let router = app_reports_versions::register_versions_routes(router);
+    let router = app_reports_devices::register_devices_routes(router);
+    let router = app_settings::register_routes(router);
+    let router = app_reports_accessibility::register_accessibility_routes(router);
+    let router = event_types::register_event_type_routes(router);
+    let router = notebooks::register_routes(router);
     let router = auth::register_routes(router);
     let router = reports::register_routes(router);
     let router = recording::register_routes(router);
@@ -830,6 +857,9 @@ pub fn build_router(state: AppState) -> Router {
     let router = insights::register_routes(router);
     let router = properties::register_routes(router);
     let router = website_ops::register_routes(router);
+    let router = workspace_card_metrics::register_routes(router);
+    let router = workspace_folders::register_routes(router);
+    let router = workspace_poll::register_routes(router);
     let api: Router = router.with_state(state.clone());
     let mcp_api = api.clone();
     let mcp_state = state.clone();
@@ -1064,6 +1094,250 @@ mod tests {
         );
         assert_eq!(mapped_android.payload.device.as_deref(), Some("mobile"));
         assert_eq!(mapped_android.payload.os.as_deref(), Some("Android 15"));
+    }
+
+    #[test]
+    fn retains_app_sdk_and_device_report_values_per_event_without_widening_the_allowlist() {
+        let now_ms = DateTime::parse_from_rfc3339("2026-03-01T10:23:00Z")
+            .unwrap()
+            .timestamp_millis();
+        let client_user = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let first_signal = json!({
+            "appID": "3D452373-9D34-41F4-A80D-5B03ADD59B1C",
+            "clientUser": client_user,
+            "type": "TelemetryDeck.Navigation.pathChanged",
+            "payload": {
+                "TelemetryDeck.Navigation.destinationPath": "/first",
+                "TelemetryDeck.AppInfo.version": "1.2.3",
+                "TelemetryDeck.AppInfo.buildNumber": "42",
+                "TelemetryDeck.SDK.name": "SwiftSDK",
+                "TelemetryDeck.SDK.version": "2.9.0",
+                "TelemetryDeck.Device.operatingSystem": "iOS",
+                "TelemetryDeck.Device.platform": "iOS",
+                "TelemetryDeck.Device.orientation": "portrait",
+                "TelemetryDeck.Device.screenResolutionWidth": "834.0",
+                "TelemetryDeck.Device.screenResolutionHeight": "1194.0",
+                "TelemetryDeck.RunContext.language": "en",
+                "TelemetryDeck.UserPreference.colorScheme": "dark",
+                "TelemetryDeck.UserPreference.language": "fr",
+                "TelemetryDeck.UserPreference.region": "CA",
+                "TelemetryDeck.UserPreference.layoutDirection": "leftToRight",
+                "TelemetryDeck.Error.category": "thrown-exception",
+                "TelemetryDeck.Error.id": "ImportObject.jsonDecode",
+                "TelemetryDeck.Error.message": "/Users/alice/private.json could not be decoded",
+                "TelemetryDeck.Accessibility.isBoldTextEnabled": "true",
+                "TelemetryDeck.SDK.nameAndVersion": "SwiftSDK 2.9.0",
+                "TelemetryDeck.Private.installID": "private-first",
+                "releaseChannel": "stable"
+            }
+        });
+        let second_signal = json!({
+            "appID": "3D452373-9D34-41F4-A80D-5B03ADD59B1C",
+            "clientUser": client_user,
+            "type": "MAAP.secondLaunch",
+            "payload": {
+                "TelemetryDeck.AppInfo.version": "1.3.0",
+                "TelemetryDeck.AppInfo.buildNumber": "43",
+                "TelemetryDeck.SDK.version": "3.0.0",
+                "TelemetryDeck.Device.operatingSystem": "iOS",
+                "TelemetryDeck.Device.platform": "iOS",
+                "TelemetryDeck.Device.orientation": "landscape",
+                "TelemetryDeck.Device.screenResolutionWidth": "1194.0",
+                "TelemetryDeck.Device.screenResolutionHeight": "834.0",
+                "TelemetryDeck.UserPreference.language": "de",
+                "TelemetryDeck.UserPreference.region": "DE",
+                "TelemetryDeck.UserPreference.layoutDirection": "rightToLeft",
+                "TelemetryDeck.UserPreference.colorScheme": "light",
+                "TelemetryDeck.Localization.locale": "de_DE",
+                "TelemetryDeck.Private.installID": "private-second",
+                "releaseChannel": "beta"
+            }
+        });
+
+        let SignalDisposition::Mapped(first) =
+            map_signal(&first_signal, &TdOptions::default(), now_ms)
+        else {
+            panic!("expected first signal");
+        };
+        let SignalDisposition::Mapped(second) =
+            map_signal(&second_signal, &TdOptions::default(), now_ms)
+        else {
+            panic!("expected second signal");
+        };
+        assert_eq!(first.payload.name, None);
+        assert_eq!(second.payload.name.as_deref(), Some("MAAP.secondLaunch"));
+
+        let first_data = first.payload.data.as_ref().unwrap();
+        assert_eq!(
+            first_data.get("TelemetryDeck.AppInfo.version"),
+            Some(&json!("1.2.3"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.AppInfo.buildNumber"),
+            Some(&json!("42"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.SDK.name"),
+            Some(&json!("SwiftSDK"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.SDK.version"),
+            Some(&json!("2.9.0"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.Device.operatingSystem"),
+            Some(&json!("iOS"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.Device.platform"),
+            Some(&json!("iOS"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.Device.orientation"),
+            Some(&json!("portrait"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.Device.screenResolutionWidth"),
+            Some(&json!("834.0"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.Device.screenResolutionHeight"),
+            Some(&json!("1194.0"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.UserPreference.colorScheme"),
+            Some(&json!("dark"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.RunContext.language"),
+            Some(&json!("en"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.UserPreference.language"),
+            Some(&json!("fr"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.UserPreference.region"),
+            Some(&json!("CA"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.UserPreference.layoutDirection"),
+            Some(&json!("leftToRight"))
+        );
+        assert_eq!(
+            first_data.get("TelemetryDeck.Error.category"),
+            Some(&json!("thrown-exception"))
+        );
+        assert_eq!(first_data.get("releaseChannel"), Some(&json!("stable")));
+        assert!(!first_data.contains_key("TelemetryDeck.SDK.nameAndVersion"));
+        assert!(!first_data.contains_key("TelemetryDeck.Error.id"));
+        assert!(!first_data.contains_key("TelemetryDeck.Error.message"));
+        assert!(!first_data.contains_key("TelemetryDeck.Accessibility.isBoldTextEnabled"));
+        assert!(!first_data.contains_key("TelemetryDeck.Private.installID"));
+
+        let second_data = second.payload.data.as_ref().unwrap();
+        assert_eq!(
+            second_data.get("TelemetryDeck.AppInfo.version"),
+            Some(&json!("1.3.0"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.AppInfo.buildNumber"),
+            Some(&json!("43"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.SDK.version"),
+            Some(&json!("3.0.0"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.Device.operatingSystem"),
+            Some(&json!("iOS"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.Device.platform"),
+            Some(&json!("iOS"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.Device.orientation"),
+            Some(&json!("landscape"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.Device.screenResolutionWidth"),
+            Some(&json!("1194.0"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.Device.screenResolutionHeight"),
+            Some(&json!("834.0"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.UserPreference.colorScheme"),
+            Some(&json!("light"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.UserPreference.language"),
+            Some(&json!("de"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.UserPreference.region"),
+            Some(&json!("DE"))
+        );
+        assert_eq!(
+            second_data.get("TelemetryDeck.UserPreference.layoutDirection"),
+            Some(&json!("rightToLeft"))
+        );
+        assert_eq!(second_data.get("releaseChannel"), Some(&json!("beta")));
+        assert!(!second_data.contains_key("TelemetryDeck.SDK.name"));
+        assert!(!second_data.contains_key("TelemetryDeck.RunContext.language"));
+        assert!(!second_data.contains_key("TelemetryDeck.Error.category"));
+        assert!(!second_data.contains_key("TelemetryDeck.Localization.locale"));
+        assert!(!second_data.contains_key("TelemetryDeck.Private.installID"));
+
+        let mut fields = Vec::new();
+        flatten_event_data(second_data, "", &mut fields);
+        for key in [
+            "TelemetryDeck.AppInfo.version",
+            "TelemetryDeck.AppInfo.buildNumber",
+            "TelemetryDeck.SDK.version",
+            "TelemetryDeck.Device.operatingSystem",
+            "TelemetryDeck.Device.platform",
+            "TelemetryDeck.Device.orientation",
+            "TelemetryDeck.Device.screenResolutionWidth",
+            "TelemetryDeck.Device.screenResolutionHeight",
+            "TelemetryDeck.UserPreference.language",
+            "TelemetryDeck.UserPreference.region",
+            "TelemetryDeck.UserPreference.layoutDirection",
+            "TelemetryDeck.UserPreference.colorScheme",
+        ] {
+            let field = fields.iter().find(|field| field.key == key).unwrap();
+            assert_eq!(field.data_type, 1);
+            assert!(field.string_value.is_some());
+        }
+
+        let options = TdOptions {
+            allowed_keys: HashSet::from([
+                "releaseChannel".to_string(),
+                "TelemetryDeck.Error.id".to_string(),
+                "TelemetryDeck.Accessibility.isBoldTextEnabled".to_string(),
+            ]),
+            ..Default::default()
+        };
+        let SignalDisposition::Mapped(replaced) = map_signal(&first_signal, &options, now_ms)
+        else {
+            panic!("expected replacement allowlist signal");
+        };
+        assert_eq!(
+            replaced.payload.data,
+            Some(Map::from_iter([
+                ("releaseChannel".to_string(), json!("stable")),
+                (
+                    "TelemetryDeck.Error.id".to_string(),
+                    json!("ImportObject.jsonDecode")
+                ),
+                (
+                    "TelemetryDeck.Accessibility.isBoldTextEnabled".to_string(),
+                    json!("true")
+                )
+            ]))
+        );
     }
 
     #[test]

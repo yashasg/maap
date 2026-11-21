@@ -34,7 +34,12 @@ test('maps navigation to a pageview with app dimensions and only selected SDK pr
     'TelemetryDeck.AppInfo.version': '1.2.3',
     'TelemetryDeck.AppInfo.buildNumber': '42',
     'TelemetryDeck.Device.modelName': 'iPad14,3',
+    'TelemetryDeck.Device.operatingSystem': 'iOS',
     'TelemetryDeck.Device.systemVersion': 'iOS 18.4.1',
+    'TelemetryDeck.Device.screenResolutionWidth': '834.0',
+    'TelemetryDeck.Device.screenResolutionHeight': '1194.0',
+    'TelemetryDeck.UserPreference.language': 'fr-CA',
+    'TelemetryDeck.UserPreference.region': 'CA',
     appVersion: '1.2.3',
     buildNumber: '42',
     modelName: 'iPad14,3',
@@ -80,6 +85,132 @@ test('keeps custom signals named, promotes floatValue, supports aliases and exac
     value: '003',
     'TelemetryDeck.RunContext.isTestFlight': 'true',
     floatValue: 0,
+  });
+});
+
+test('keeps app, SDK, and device report values at event grain without widening the allowlist', () => {
+  const clientUser = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const first = mapSignal({
+    appID: action.appID,
+    clientUser,
+    type: 'TelemetryDeck.Navigation.pathChanged',
+    payload: {
+      'TelemetryDeck.Navigation.destinationPath': '/first',
+      'TelemetryDeck.AppInfo.version': '1.2.3',
+      'TelemetryDeck.AppInfo.buildNumber': '42',
+      'TelemetryDeck.SDK.name': 'SwiftSDK',
+      'TelemetryDeck.SDK.version': '2.9.0',
+      'TelemetryDeck.Device.operatingSystem': 'iOS',
+      'TelemetryDeck.Device.platform': 'iOS',
+      'TelemetryDeck.Device.orientation': 'portrait',
+      'TelemetryDeck.Device.screenResolutionWidth': '834.0',
+      'TelemetryDeck.Device.screenResolutionHeight': '1194.0',
+      'TelemetryDeck.RunContext.language': 'en',
+      'TelemetryDeck.UserPreference.colorScheme': 'dark',
+      'TelemetryDeck.UserPreference.language': 'fr',
+      'TelemetryDeck.UserPreference.region': 'CA',
+      'TelemetryDeck.UserPreference.layoutDirection': 'leftToRight',
+      'TelemetryDeck.Error.category': 'thrown-exception',
+      'TelemetryDeck.Error.id': 'ImportObject.jsonDecode',
+      'TelemetryDeck.Error.message': '/Users/alice/private.json could not be decoded',
+      'TelemetryDeck.Accessibility.isBoldTextEnabled': 'true',
+      'TelemetryDeck.SDK.nameAndVersion': 'SwiftSDK 2.9.0',
+      'TelemetryDeck.Private.installID': 'private-first',
+      releaseChannel: 'stable',
+    },
+  }).payload;
+  const second = mapSignal({
+    appID: action.appID,
+    clientUser,
+    type: 'MAAP.secondLaunch',
+    payload: {
+      'TelemetryDeck.AppInfo.version': '1.3.0',
+      'TelemetryDeck.AppInfo.buildNumber': '43',
+      'TelemetryDeck.SDK.version': '3.0.0',
+      'TelemetryDeck.Device.operatingSystem': 'iOS',
+      'TelemetryDeck.Device.platform': 'iOS',
+      'TelemetryDeck.Device.orientation': 'landscape',
+      'TelemetryDeck.Device.screenResolutionWidth': '1194.0',
+      'TelemetryDeck.Device.screenResolutionHeight': '834.0',
+      'TelemetryDeck.UserPreference.language': 'de',
+      'TelemetryDeck.UserPreference.region': 'DE',
+      'TelemetryDeck.UserPreference.layoutDirection': 'rightToLeft',
+      'TelemetryDeck.UserPreference.colorScheme': 'light',
+      'TelemetryDeck.Localization.locale': 'de_DE',
+      'TelemetryDeck.Private.installID': 'private-second',
+      releaseChannel: 'beta',
+    },
+  }).payload;
+
+  assert.equal(first.name, undefined);
+  assert.equal(second.name, 'MAAP.secondLaunch');
+  assert.deepEqual({ ...first.data }, {
+    'TelemetryDeck.AppInfo.version': '1.2.3',
+    'TelemetryDeck.AppInfo.buildNumber': '42',
+    'TelemetryDeck.SDK.name': 'SwiftSDK',
+    'TelemetryDeck.SDK.version': '2.9.0',
+    'TelemetryDeck.Device.operatingSystem': 'iOS',
+    'TelemetryDeck.Device.platform': 'iOS',
+    'TelemetryDeck.Device.orientation': 'portrait',
+    'TelemetryDeck.Device.screenResolutionWidth': '834.0',
+    'TelemetryDeck.Device.screenResolutionHeight': '1194.0',
+    'TelemetryDeck.RunContext.language': 'en',
+    'TelemetryDeck.UserPreference.colorScheme': 'dark',
+    'TelemetryDeck.UserPreference.language': 'fr',
+    'TelemetryDeck.UserPreference.region': 'CA',
+    'TelemetryDeck.UserPreference.layoutDirection': 'leftToRight',
+    'TelemetryDeck.Error.category': 'thrown-exception',
+    releaseChannel: 'stable',
+  });
+  assert.deepEqual({ ...second.data }, {
+    'TelemetryDeck.AppInfo.version': '1.3.0',
+    'TelemetryDeck.AppInfo.buildNumber': '43',
+    'TelemetryDeck.SDK.version': '3.0.0',
+    'TelemetryDeck.Device.operatingSystem': 'iOS',
+    'TelemetryDeck.Device.platform': 'iOS',
+    'TelemetryDeck.Device.orientation': 'landscape',
+    'TelemetryDeck.Device.screenResolutionWidth': '1194.0',
+    'TelemetryDeck.Device.screenResolutionHeight': '834.0',
+    'TelemetryDeck.UserPreference.language': 'de',
+    'TelemetryDeck.UserPreference.region': 'DE',
+    'TelemetryDeck.UserPreference.layoutDirection': 'rightToLeft',
+    'TelemetryDeck.UserPreference.colorScheme': 'light',
+    releaseChannel: 'beta',
+  });
+  assert.equal(Object.hasOwn(second.data, 'TelemetryDeck.SDK.name'), false);
+  assert.equal(Object.hasOwn(second.data, 'TelemetryDeck.RunContext.language'), false);
+  assert.equal(Object.hasOwn(second.data, 'TelemetryDeck.Error.category'), false);
+  assert.equal(Object.hasOwn(second.data, 'TelemetryDeck.Localization.locale'), false);
+
+  const replaced = mapSignal(
+    {
+      appID: action.appID,
+      clientUser,
+      type: 'MAAP.allowedKeys',
+      payload: {
+        'TelemetryDeck.AppInfo.version': '9.9.9',
+        'TelemetryDeck.SDK.name': 'SwiftSDK',
+        'TelemetryDeck.Device.operatingSystem': 'iOS',
+        'TelemetryDeck.UserPreference.colorScheme': 'dark',
+        'TelemetryDeck.UserPreference.language': 'fr',
+        'TelemetryDeck.Error.category': 'thrown-exception',
+        'TelemetryDeck.Error.id': 'ImportObject.jsonDecode',
+        'TelemetryDeck.Accessibility.isBoldTextEnabled': 'true',
+        releaseChannel: 'custom',
+      },
+    },
+    {
+      allowedKeys: new Set([
+        'releaseChannel',
+        'TelemetryDeck.Error.id',
+        'TelemetryDeck.Accessibility.isBoldTextEnabled',
+      ]),
+    },
+  ).payload;
+  assert.deepEqual({ ...replaced.data }, {
+    'TelemetryDeck.Error.id': 'ImportObject.jsonDecode',
+    'TelemetryDeck.Accessibility.isBoldTextEnabled': 'true',
+    releaseChannel: 'custom',
   });
 });
 

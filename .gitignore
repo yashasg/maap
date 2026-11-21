@@ -22,6 +22,7 @@ next-env.d.ts
 /public/script.js
 /public/recorder.js
 /public/openapi.json
+/public/fonts/*.woff2*
 /geo
 /dist
 /packages/*/dist

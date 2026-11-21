@@ -6,6 +6,10 @@ import { MobileNav } from '@/app/(main)/MobileNav';
 import { SideNav } from '@/app/(main)/SideNav';
 import { TopNav } from '@/app/(main)/TopNav';
 import {
+  isAppReportPath,
+  isNativeApp,
+} from '@/app/(main)/websites/[websiteId]/app-metrics/report-layout';
+import {
   useConfig,
   useLoginQuery,
   useNavigation,
@@ -13,6 +17,7 @@ import {
   useTeamQuery,
   useTwoFactorStatusQuery,
 } from '@/components/hooks';
+import { useWebsiteQuery } from '@/components/hooks/queries/useWebsiteQuery';
 import { PasswordChangeRequiredModal } from '@/components/modals/PasswordChangeRequiredModal';
 import { TwoFactorSetupModal } from '@/components/modals/TwoFactorSetupModal';
 import { LAST_TEAM_CONFIG } from '@/lib/constants';
@@ -22,7 +27,7 @@ import { UpdateNotice } from './UpdateNotice';
 export function App({ children }) {
   const { user, isLoading, error } = useLoginQuery();
   const config = useConfig();
-  const { pathname, router, teamId } = useNavigation();
+  const { pathname, router, teamId, websiteId } = useNavigation();
   const { billingStatus, isOwner, isLoading: isSubscriptionLoading } = useSubscription(teamId);
   const isBillingPastDue = config.cloudMode && billingStatus === 'past_due';
   const isBlockedTeam = !!teamId && isBillingPastDue;
@@ -33,6 +38,14 @@ export function App({ children }) {
   const needsTwoFactorSetup = !!(twoFactorStatus?.isRequired && !twoFactorStatus?.isEnabled);
   const passwordChangeRequired = !!user?.passwordChangeRequired && !config.cloudMode;
   const accessBlocked = needsTwoFactorSetup || passwordChangeRequired;
+  const reportPath = isAppReportPath(pathname, websiteId);
+  const { data: property } = useWebsiteQuery(websiteId, {
+    enabled: !!user && reportPath && !isBlockedTeam && !accessBlocked,
+    placeholderData: undefined,
+  });
+  const appReports = reportPath && property?.id === websiteId && isNativeApp(property?.domain);
+  const workspaceHome = /^\/(?:teams\/[a-f0-9-]+\/)?websites\/?$/i.test(pathname);
+  const standalone = appReports || workspaceHome;
 
   useEffect(() => {
     if (teamId) {
@@ -102,18 +115,26 @@ export function App({ children }) {
 
   return (
     <Grid
-      columns={{ base: '1fr', lg: 'auto 1fr' }}
-      rows={{ base: 'auto 1fr', lg: '1fr' }}
+      columns={standalone ? 'minmax(0, 1fr)' : { base: '1fr', lg: 'auto 1fr' }}
+      rows={standalone ? '1fr' : { base: 'auto 1fr', lg: '1fr' }}
       height="screen"
     >
-      <Row display={{ base: 'flex', lg: 'none' }} alignItems="center" gap padding="3">
-        <MobileNav />
-      </Row>
-      <Column display={{ base: 'none', lg: 'flex' }} minHeight="0" style={{ overflow: 'hidden' }}>
-        <SideNav />
-      </Column>
+      {!standalone && (
+        <>
+          <Row display={{ base: 'flex', lg: 'none' }} alignItems="center" gap padding="3">
+            <MobileNav />
+          </Row>
+          <Column
+            display={{ base: 'none', lg: 'flex' }}
+            minHeight="0"
+            style={{ overflow: 'hidden' }}
+          >
+            <SideNav />
+          </Column>
+        </>
+      )}
       <Column overflowX="hidden" minHeight="0" position="relative">
-        <TopNav />
+        <TopNav appReports={appReports} workspaceHome={workspaceHome} />
         <Column
           alignItems="center"
           aria-hidden={accessBlocked || undefined}

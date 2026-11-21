@@ -22,7 +22,8 @@ import { SessionProfile } from '@/app/(main)/websites/[websiteId]/sessions/Sessi
 import { SessionsPage } from '@/app/(main)/websites/[websiteId]/sessions/SessionsPage';
 import { SettingsPage } from '@/app/(main)/websites/[websiteId]/settings/SettingsPage';
 import { WebsiteLayout } from '@/app/(main)/websites/[websiteId]/WebsiteLayout';
-import { WebsitePage } from '@/app/(main)/websites/[websiteId]/WebsitePage';
+import { AppReportPage, PropertyHome } from './websites/[websiteId]/app-metrics/AppReportPage';
+import { isAppReport } from './websites/[websiteId]/app-metrics/sections';
 import NotFound from '@/app/not-found';
 import { AdminLayout } from './admin/AdminLayout';
 import { AdminTeamPage } from './admin/teams/[teamId]/AdminTeamPage';
@@ -44,7 +45,7 @@ import { ReplaysPage } from './websites/[websiteId]/replays/ReplaysPage';
 import { SearchConsolePage } from './websites/[websiteId]/search-console/SearchConsolePage';
 
 const WEBSITE_PAGES: Record<string, ComponentType<{ websiteId: string }>> = {
-  '': WebsitePage,
+  '': PropertyHome,
   events: EventsPage,
   sessions: SessionsPage,
   realtime: RealtimePage,
@@ -81,7 +82,9 @@ export function SpaRouteView({ children }: { children: ReactNode }) {
     const subpath = (websiteMatch[2] || '').replace(/\/+$/, '');
     const [section, id, extra] = subpath.split('/');
     let page: ReactNode;
-    if (extra === undefined && id && section === 'sessions')
+    if (extra === undefined && id && section === 'app-reports' && isAppReport(id))
+      page = <AppReportPage websiteId={websiteId} screen={id} />;
+    else if (extra === undefined && id && section === 'sessions')
       page = <SessionProfile websiteId={websiteId} sessionId={id} />;
     else if (extra === undefined && id && section === 'replays')
       page = <ReplayPlayback websiteId={websiteId} replayId={id} />;

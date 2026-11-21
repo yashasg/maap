@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test } from './fixtures';
 import { dateRange, TIMEZONE } from './helpers/dates';
 
@@ -73,6 +74,66 @@ test.describe('Event data', () => {
     expect(shared.status).toBe(200);
     expect(denied.status).toBe(401);
     expect(missingRange.status).toBe(400);
+  });
+
+  test('TelemetryDeck metadata remains queryable per signal across an SDK upgrade', async ({
+    api,
+    admin,
+    seed,
+  }) => {
+    const eventName = `sdk-upgrade-${randomUUID()}`;
+    const clientUser = 'd'.repeat(64);
+    const sessionID = randomUUID();
+    const startAt = Date.now() - 60_000;
+    const releases = [
+      {
+        'TelemetryDeck.AppInfo.version': '1.0.0',
+        'TelemetryDeck.AppInfo.buildNumber': '100',
+        'TelemetryDeck.SDK.name': 'TelemetryDeckSwift',
+        'TelemetryDeck.SDK.version': '2.5.0',
+      },
+      {
+        'TelemetryDeck.AppInfo.version': '2.0.0',
+        'TelemetryDeck.AppInfo.buildNumber': '200',
+        'TelemetryDeck.SDK.name': 'TelemetryDeckSwift',
+        'TelemetryDeck.SDK.version': '3.0.0',
+      },
+    ];
+
+    const ingested = await api.post(
+      '/v2/',
+      releases.map(payload => ({
+        appID: seed.website.id,
+        clientUser,
+        sessionID,
+        type: eventName,
+        isTestMode: 'false',
+        payload,
+      })),
+    );
+
+    expect(ingested.status).toBe(200);
+    expect(ingested.body).toEqual({ accepted: 2, rejected: 0, dropped: 0 });
+
+    const response = await admin.get(`${base}/event-data`, {
+      params: { startAt, endAt: Date.now() + 60_000, event: eventName, pageSize: 10 },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.count).toBe(2);
+    expect(response.body.data).toHaveLength(2);
+
+    const persisted = response.body.data
+      .map((event: any) =>
+        Object.fromEntries(
+          event.eventProperties.map(({ dataKey, stringValue }: any) => [dataKey, stringValue]),
+        ),
+      )
+      .sort((a: Record<string, string>, b: Record<string, string>) =>
+        a['TelemetryDeck.AppInfo.version'].localeCompare(b['TelemetryDeck.AppInfo.version']),
+      );
+
+    expect(persisted).toEqual(releases);
   });
 
   test('GET /api/websites/{websiteId}/event-data/{eventId} returns the raw rows of one event', async ({

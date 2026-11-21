@@ -1,0 +1,138 @@
+.workspaceTopBar {
+  height: auto !important;
+  min-height: 4rem;
+  flex-shrink: 0 !important;
+  gap: 0.65rem;
+  border-bottom: 1px solid var(--zen-border);
+}
+
+.brand {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0.25rem;
+}
+
+.brand svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.pickers {
+  min-width: 0;
+}
+
+.divider {
+  width: 1px;
+  height: 1.5rem;
+  margin-inline: 0.15rem;
+  background: var(--zen-border);
+}
+
+.mobileAppPicker {
+  display: none;
+}
+
+.search {
+  display: flex;
+  flex: 0 1 18rem;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 8rem;
+  margin-inline-start: 0.25rem;
+  padding: 0.42rem 0.65rem;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.45rem;
+  background: var(--zen-surface-sunken);
+  color: var(--zen-fg-muted);
+}
+
+.search:focus-within {
+  border-color: var(--zen-border-strong);
+  outline: 2px solid var(--zen-focus-ring, var(--zen-primary));
+  outline-offset: 1px;
+}
+
+.search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--zen-fg);
+  font: inherit;
+}
+
+.search input::placeholder {
+  color: var(--zen-fg-muted);
+}
+
+.shortcut {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+}
+
+.account {
+  margin-inline-start: auto;
+}
+
+@media (max-width: 760px) {
+  .workspaceTopBar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+    padding-inline: 0.5rem;
+  }
+
+  .brand {
+    display: none;
+  }
+
+  .pickers {
+    grid-column: 1;
+    grid-row: 1;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .pickers > * {
+    flex-shrink: 0;
+  }
+
+  .pickers > :nth-child(2) {
+    display: none;
+  }
+
+  .workspaceAppPicker {
+    display: none;
+  }
+
+  .mobileAppPicker {
+    display: block;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+
+  .divider {
+    display: none;
+  }
+
+  .search {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  .account {
+    grid-column: 2;
+    grid-row: 1;
+    margin-inline-start: 0;
+  }
+
+  .shortcut {
+    display: none;
+  }
+}

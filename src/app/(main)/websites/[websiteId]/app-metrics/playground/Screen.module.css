@@ -1,0 +1,262 @@
+.screen {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.heading {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.editorTabs {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.2rem;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.5rem;
+  background: var(--zen-surface-sunken);
+}
+
+.tab,
+.runButton {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.9rem;
+  border: 0;
+  border-radius: 0.35rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--zen-fg-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  color: var(--zen-fg);
+  background: var(--zen-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--zen-fg) 14%, transparent);
+}
+
+.tab:focus-visible,
+.runButton:focus-visible,
+.select:focus-visible,
+.numberInput:focus-visible,
+.jsonEditor:focus-visible {
+  outline: 2px solid var(--zen-focus-ring);
+  outline-offset: 2px;
+}
+
+.editor {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.scope {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  list-style: none;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.5rem;
+}
+
+.scope li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 3.25rem;
+  padding: 0.75rem 1rem;
+  color: var(--zen-fg-muted);
+  border-right: 1px solid var(--zen-border);
+}
+
+.scope li:last-child {
+  border-right: 0;
+}
+
+.scope strong {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--zen-border-strong);
+  border-radius: 50%;
+  color: var(--zen-fg);
+  font-size: 0.78rem;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.field label {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.select,
+.numberInput,
+.jsonEditor {
+  width: 100%;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.4rem;
+  color: var(--zen-fg);
+  background: var(--zen-surface);
+  font: inherit;
+}
+
+.select,
+.numberInput {
+  min-height: 2.7rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.jsonEditor {
+  min-height: 13rem;
+  padding: 0.9rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.help {
+  color: var(--zen-fg-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.notice {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--zen-border);
+  border-radius: 0.45rem;
+  color: var(--zen-fg-muted);
+  background: var(--zen-surface-sunken);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.notice strong {
+  color: var(--zen-fg);
+}
+
+.error {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--zen-status-error);
+  border-radius: 0.45rem;
+  color: var(--zen-status-error);
+  background: var(--zen-status-error-bg);
+  font-size: 0.88rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.runButton {
+  color: var(--zen-primary-fg);
+  background: var(--zen-primary);
+}
+
+.runButton:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.runButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--zen-border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child,
+.table.events th:nth-child(2),
+.table.events td:nth-child(2) {
+  text-align: left;
+}
+
+.table th {
+  color: var(--zen-fg-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 8rem;
+  padding: 1rem;
+  color: var(--zen-fg-muted);
+  text-align: center;
+}
+
+.resultFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--zen-fg-muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 760px) {
+  .scope {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scope li:nth-child(2) {
+    border-right: 0;
+  }
+
+  .scope li:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--zen-border);
+  }
+
+  .fields {
+    grid-template-columns: 1fr;
+  }
+
+  .actions,
+  .resultFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .runButton {
+    width: 100%;
+  }
+}

@@ -4,7 +4,7 @@ import { getBillingAccess, getTeamBillingScope } from '@/lib/load';
 import type { Auth } from '@/lib/types';
 import { getTeamUser } from '@/queries/prisma';
 
-async function hasTeamBillingAccess(teamId: string) {
+export async function hasTeamBillingAccess(teamId: string) {
   return !(await getBillingAccess(await getTeamBillingScope(teamId))).isPastDue;
 }
 
