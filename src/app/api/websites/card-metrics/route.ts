@@ -1,46 +1,36 @@
-import { z } from 'zod';
 import { SHARE_CONTEXT_HEADER, SHARE_TOKEN_HEADER } from '@/lib/constants';
 import { fetchAccount, getBillingAccess } from '@/lib/load';
 import prisma from '@/lib/prisma';
 import { getCloudDataDateFloor, parseRequest } from '@/lib/request';
 import { json, serverError, unauthorized } from '@/lib/response';
 import { canViewTeam } from '@/permissions';
+import { cardMetricsInput } from './contract';
 
-const MAX_WEBSITES = 20;
 const MAX_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
-const MAX_DATE_MS = 8_640_000_000_000_000;
 const NATIVE_ERROR_EVENT = 'TelemetryDeck.Error.occurred';
 
-const requestSchema = z
-  .strictObject({
-    websiteIds: z.array(z.uuid()).min(1).max(MAX_WEBSITES),
-    startAt: z.number().int().min(0).max(MAX_DATE_MS),
-    endAt: z.number().int().min(0).max(MAX_DATE_MS),
-    testMode: z.boolean(),
-    teamId: z.uuid().optional(),
-  })
-  .superRefine((data, context) => {
-    if (new Set(data.websiteIds).size !== data.websiteIds.length) {
-      context.addIssue({
-        code: 'custom',
-        path: ['websiteIds'],
-        message: 'Website IDs must be unique',
-      });
-    }
-    if (data.startAt > data.endAt) {
-      context.addIssue({
-        code: 'custom',
-        path: ['endAt'],
-        message: 'The end date must not be before the start date',
-      });
-    } else if (data.endAt - data.startAt > MAX_RANGE_MS) {
-      context.addIssue({
-        code: 'custom',
-        path: ['endAt'],
-        message: 'The date range must not exceed 366 days',
-      });
-    }
-  });
+const requestSchema = cardMetricsInput.superRefine((data, context) => {
+  if (new Set(data.websiteIds).size !== data.websiteIds.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['websiteIds'],
+      message: 'Website IDs must be unique',
+    });
+  }
+  if (data.startAt > data.endAt) {
+    context.addIssue({
+      code: 'custom',
+      path: ['endAt'],
+      message: 'The end date must not be before the start date',
+    });
+  } else if (data.endAt - data.startAt > MAX_RANGE_MS) {
+    context.addIssue({
+      code: 'custom',
+      path: ['endAt'],
+      message: 'The date range must not exceed 366 days',
+    });
+  }
+});
 
 type MetricRow = {
   websiteId: string;

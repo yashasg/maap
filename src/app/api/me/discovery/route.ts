@@ -1,18 +1,9 @@
-import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { parseRequest } from '@/lib/request';
 import { json, serverError } from '@/lib/response';
+import { discoveryChoiceSchema, discoveryInputSchema } from './contract';
 
 const SETTING_KEY_PREFIX = 'workspaceDiscovery:';
-const discoveryChoiceSchema = z.enum([
-  'search',
-  'recommendation',
-  'community',
-  'content',
-  'comparison',
-  'other',
-]);
-const discoveryInputSchema = z.object({ choice: discoveryChoiceSchema }).strict();
 
 function getSettingKey(userId: string) {
   return `${SETTING_KEY_PREFIX}${userId}`;

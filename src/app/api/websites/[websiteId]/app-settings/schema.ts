@@ -8,3 +8,8 @@ export const appSettingsInputSchema = z
     revenueDisplayMode: z.enum(REVENUE_DISPLAY_MODES),
   })
   .strict();
+
+export const appSettingsResponseSchema = appSettingsInputSchema.extend({
+  websiteId: z.uuid(),
+  canWrite: z.boolean(),
+});

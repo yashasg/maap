@@ -26,3 +26,26 @@ export const notebookInputSchema = z.object({
   title: z.string().trim().min(1).max(200),
   content: notebookContentSchema,
 });
+
+export const notebookSummarySchema = z.object({
+  id: z.uuid(),
+  websiteId: z.uuid(),
+  createdBy: z.uuid().nullable(),
+  title: z.string().min(1).max(200),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+export const notebookSchema = notebookSummarySchema.extend({
+  content: notebookContentSchema,
+});
+
+export const notebookListResponseSchema = z.object({
+  data: z.array(notebookSummarySchema),
+  canWrite: z.boolean(),
+});
+
+export const notebookResponseSchema = z.object({
+  data: notebookSchema,
+  canWrite: z.boolean(),
+});

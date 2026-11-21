@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { hasPermission } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/constants';
 import { uuid } from '@/lib/crypto';
@@ -7,6 +6,7 @@ import prisma from '@/lib/prisma';
 import { parseRequest } from '@/lib/request';
 import { json, ok, unauthorized } from '@/lib/response';
 import { hasTeamBillingAccess } from '@/permissions/team';
+import { createFolder, folderScope, moveWebsite } from './contract';
 
 type WorkspaceScope = { userId: string; teamId: null } | { userId: null; teamId: string };
 
@@ -82,8 +82,7 @@ async function authorizeScope(
 }
 
 export async function GET(request: Request) {
-  const schema = z.object({ teamId: z.uuid().optional() });
-  const { auth, query, error } = await parseRequest(request, schema);
+  const { auth, query, error } = await parseRequest(request, folderScope);
 
   if (error) {
     return error();
@@ -110,11 +109,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const schema = z.object({
-    teamId: z.uuid().optional(),
-    name: z.string().trim().min(1).max(100),
-  });
-  const { auth, body, error } = await parseRequest(request, schema);
+  const { auth, body, error } = await parseRequest(request, createFolder);
 
   if (error) {
     return error();
@@ -146,12 +141,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const schema = z.object({
-    teamId: z.uuid().optional(),
-    websiteId: z.uuid(),
-    folderId: z.uuid().nullable(),
-  });
-  const { auth, body, error } = await parseRequest(request, schema);
+  const { auth, body, error } = await parseRequest(request, moveWebsite);
 
   if (error) {
     return error();

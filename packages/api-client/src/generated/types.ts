@@ -670,6 +670,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/me/discovery': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the current user’s discovery survey choice */
+    get: operations['getMeDiscovery'];
+    put?: never;
+    /** Save the current user’s discovery survey choice */
+    post: operations['postMeDiscovery'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/me/password': {
     parameters: {
       query?: never;
@@ -1385,6 +1403,190 @@ export interface paths {
      * @description Deletes the specified dated note from the website.
      */
     delete: operations['deleteWebsiteAnnotation'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-reports/accessibility': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the app accessibility report
+     * @description Returns aggregate signal counts for reported Dynamic Type and accessibility preference values without exposing individual users.
+     */
+    get: operations['getAppAccessibilityReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-reports/acquisition': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the app acquisition report
+     * @description Returns first-seen identified app users across time series, calendar patterns, and device, platform, region, and language breakdowns.
+     */
+    get: operations['getAppAcquisitionReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-reports/activation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the app activation report
+     * @description Returns identified users that meet the fixed five-minute activation rule, along with input availability, time series, calendar patterns, and breakdowns.
+     */
+    get: operations['getAppActivationReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-reports/devices': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the app devices report
+     * @description Returns aggregate signal counts for device models, operating systems, platforms, screen sizes, color schemes, and orientations.
+     */
+    get: operations['getAppDevicesReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-reports/event-types': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the app event types report
+     * @description Returns custom event names with total event counts and distinct identified-user counts for the selected scope.
+     */
+    get: operations['getAppEventTypesReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-reports/overview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the app overview report
+     * @description Returns identified-user totals, daily activity, retention checkpoints, and current app and SDK dimension breakdowns for the selected scope.
+     */
+    get: operations['getAppOverviewReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-reports/retention': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the app retention report
+     * @description Returns identified returning users across time series, calendar patterns, and device, platform, region, and language breakdowns.
+     */
+    get: operations['getAppRetentionReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-reports/versions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the app versions report
+     * @description Returns event counts grouped by app version, build number, or SDK version for the selected scope.
+     */
+    get: operations['getAppVersionsReport'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/app-settings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get website app settings
+     * @description Returns persisted app presentation settings, defaults for unset values, and write capability.
+     */
+    get: operations['getWebsiteAppSettings'];
+    put?: never;
+    /**
+     * Update website app settings
+     * @description Replaces the complete persisted app settings record for the website.
+     */
+    post: operations['updateWebsiteAppSettings'];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -2198,6 +2400,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/websites/{websiteId}/notebooks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List website notebooks
+     * @description Returns notebook summaries for the website and whether the authenticated user can edit them.
+     */
+    get: operations['listWebsiteNotebooks'];
+    put?: never;
+    /**
+     * Create a website notebook
+     * @description Creates a notebook for a website the authenticated user can edit.
+     */
+    post: operations['createWebsiteNotebook'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/websites/{websiteId}/notebooks/{notebookId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a website notebook
+     * @description Returns a notebook from the website and whether the authenticated user can edit it.
+     */
+    get: operations['getWebsiteNotebook'];
+    put?: never;
+    /**
+     * Update a website notebook
+     * @description Replaces the title and content of a notebook in the specified website.
+     */
+    post: operations['updateWebsiteNotebook'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/websites/{websiteId}/pageviews': {
     parameters: {
       query?: never;
@@ -2982,6 +3232,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/websites/card-metrics': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Get user and error counts for workspace cards
+     * @description Supply distinct website IDs from one workspace and an ordered date range of at most 366 days. Counts are returned in the requested order.
+     */
+    post: operations['postWebsitesCardMetrics'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/websites/charts': {
     parameters: {
       query?: never;
@@ -2996,6 +3266,25 @@ export interface paths {
     get: operations['getWebsitesCharts'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workspace-folders': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List folders and website assignments in the workspace */
+    get: operations['getWorkspaceFolders'];
+    /** Move a website to a folder, or to the workspace root */
+    put: operations['putWorkspaceFolders'];
+    /** Create a folder in the workspace */
+    post: operations['postWorkspaceFolders'];
     delete?: never;
     options?: never;
     head?: never;
@@ -3021,6 +3310,569 @@ export interface components {
       } & {
         [key: string]: unknown;
       };
+    };
+    AppAccessibilityReport: {
+      /** @description Saved reports associated with the user. */
+      reports: {
+        /**
+         * @description Unique identifier of the resource.
+         * @enum {string}
+         */
+        id:
+          | 'preferredContentSize'
+          | 'boldText'
+          | 'reduceMotion'
+          | 'reduceTransparency'
+          | 'darkerSystemColors'
+          | 'differentiateWithoutColor'
+          | 'invertedColors';
+        reportedSignals: number;
+        totalSignals: number;
+        values: {
+          label: string;
+          signals: number;
+        }[];
+      }[];
+    };
+    AppAcquisitionReport: {
+      availability: {
+        reason: string;
+        /** @constant */
+        userLocalTime: false;
+      };
+      breakdowns: {
+        /** @description Device category used by the visitor. */
+        device: {
+          /** @description Display name of the resource. */
+          name: string;
+          users: number;
+        }[];
+        /** @description Preferred language reported by the visitor browser. */
+        language: {
+          /** @description Display name of the resource. */
+          name: string;
+          users: number;
+        }[];
+        platform: {
+          /** @description Display name of the resource. */
+          name: string;
+          users: number;
+        }[];
+        /** @description Region or subdivision of the visitor. */
+        region: {
+          /** @description Display name of the resource. */
+          name: string;
+          users: number;
+        }[];
+      };
+      identity: {
+        /** @constant */
+        source: 'clientUser';
+        /** @constant */
+        unidentifiedEventsExcluded: true;
+        /**
+         * @description Time interval used to group results: minute, hour, day, month, or year.
+         * @constant
+         */
+        unit: 'appUser';
+      };
+      patterns: {
+        dayOfWeek: {
+          bucket: string;
+          users: number;
+        }[];
+        dayOfWeek4Weeks: {
+          bucket: string;
+          users: number;
+        }[];
+        hourOfDay: {
+          bucket: string;
+          users: number;
+        }[];
+        hourOfDay4Weeks: {
+          bucket: string;
+          users: number;
+        }[];
+        weekpart: {
+          bucket: string;
+          users: number;
+        }[];
+        weekpart4Weeks: {
+          bucket: string;
+          users: number;
+        }[];
+      };
+      query: {
+        grains: {
+          daily: {
+            /**
+             * @description Time interval used to group results: minute, hour, day, month, or year.
+             * @constant
+             */
+            unit: 'day';
+            /** @constant */
+            window: 'selectedRange';
+          };
+          hourly: {
+            /**
+             * @description Time interval used to group results: minute, hour, day, month, or year.
+             * @constant
+             */
+            unit: 'hour';
+            /** @constant */
+            window: 'last24Hours';
+          };
+          monthly: {
+            /**
+             * @description Time interval used to group results: minute, hour, day, month, or year.
+             * @constant
+             */
+            unit: 'month';
+            /** @constant */
+            window: 'last12CalendarMonths';
+          };
+          weekly: {
+            /**
+             * @description Time interval used to group results: minute, hour, day, month, or year.
+             * @constant
+             */
+            unit: 'week';
+            /** @constant */
+            window: 'last3CalendarMonths';
+          };
+        };
+        milliseconds: number;
+      };
+      range: {
+        /**
+         * Format: date-time
+         * @description End of the date range as a Unix timestamp in milliseconds.
+         */
+        endAt: string;
+        identifiedSignals: number;
+        /**
+         * Format: date-time
+         * @description Start of the date range as a Unix timestamp in milliseconds.
+         */
+        startAt: string;
+        testMode: boolean;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone: string;
+        totalSignals: number;
+      };
+      series: {
+        daily: {
+          activeUsers: number;
+          bucket: string;
+          newUsers: number;
+        }[];
+        hourly: {
+          activeUsers: number;
+          bucket: string;
+          newUsers: number;
+        }[];
+        monthly: {
+          activeUsers: number;
+          bucket: string;
+          newUsers: number;
+        }[];
+        weekly: {
+          activeUsers: number;
+          bucket: string;
+          newUsers: number;
+        }[];
+      };
+    };
+    AppActivationReport: {
+      breakdowns: {
+        /** @description Device category used by the visitor. */
+        device: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        /** @description Preferred language reported by the visitor browser. */
+        language: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        platform: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        /** @description Region or subdivision of the visitor. */
+        region: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+      };
+      configuration: {
+        coreReady: boolean;
+        environmentVariable: string;
+        historicalBackfill: boolean;
+        missingKeys: string[];
+        requiredAllowlist: string[];
+        /** @enum {string} */
+        status: 'empty' | 'identity-missing' | 'configuration-missing' | 'partial' | 'ready';
+      };
+      definition: {
+        calculation: string;
+        configurable: boolean;
+        rule: string;
+        sessionLimit: number;
+        source: string;
+        thresholdSeconds: number;
+      };
+      patterns: {
+        dayOfWeek: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        dayOfWeek4Weeks: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        hourOfDay: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        hourOfDay4Weeks: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        weekpart: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        weekpart4Weeks: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+      };
+      query: {
+        /** @constant */
+        identity: 'clientUser';
+        /** @constant */
+        unidentifiedSignalsExcluded: true;
+      };
+      scope: {
+        activatedUsers: number;
+        activationInputSignals: number;
+        /**
+         * Format: date-time
+         * @description End of the date range as a Unix timestamp in milliseconds.
+         */
+        endAt: string;
+        identifiedSignals: number;
+        /**
+         * Format: date-time
+         * @description Start of the date range as a Unix timestamp in milliseconds.
+         */
+        startAt: string;
+        testMode: boolean;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone: string;
+        totalSignals: number;
+      };
+      series: {
+        daily: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        hourly: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        monthly: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+        weekly: {
+          /** @description Number of matching records. */
+          count: number;
+          key: string;
+          label: string;
+        }[];
+      };
+    };
+    AppDevicesReport: {
+      /** @description Saved reports associated with the user. */
+      reports: {
+        /**
+         * @description Unique identifier of the resource.
+         * @enum {string}
+         */
+        id:
+          | 'models'
+          | 'systemVersions'
+          | 'types'
+          | 'platforms'
+          | 'screenWidths'
+          | 'screenHeights'
+          | 'colorSchemes'
+          | 'orientations';
+        reportedSignals: number;
+        totalSignals: number;
+        values: {
+          signals: number;
+          value: string | null;
+        }[];
+      }[];
+    };
+    AppEventTypesReport: {
+      /** @description Data returned by the operation. */
+      data: {
+        events: number;
+        /** @description Display name of the resource. */
+        name: string;
+        users: number;
+      }[];
+    };
+    AppOverviewReport: {
+      dailyUsers: {
+        x: string;
+        y: number;
+      }[];
+      dimensions: {
+        appVersion: {
+          users: number;
+          value: string;
+        }[];
+        buildNumber: {
+          users: number;
+          value: string;
+        }[];
+        sdkName: {
+          users: number;
+          value: string;
+        }[];
+        sdkVersion: {
+          users: number;
+          value: string;
+        }[];
+        systemVersion: {
+          users: number;
+          value: string;
+        }[];
+      };
+      /** @constant */
+      identity: 'clientUser';
+      range: {
+        /**
+         * Format: date-time
+         * @description End of the date range as a Unix timestamp in milliseconds.
+         */
+        endAt: string;
+        /**
+         * Format: date-time
+         * @description Start of the date range as a Unix timestamp in milliseconds.
+         */
+        startAt: string;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone: string;
+      };
+      retention: {
+        day: number;
+        eligibleUsers: number;
+        percentage: number | null;
+        returningUsers: number;
+      }[];
+      summary: {
+        errors: number | null;
+        events: number;
+        mostUsedSdk: string | null;
+        users: number;
+        usersLastHour: number;
+      };
+    };
+    AppRetentionReport: {
+      availability: {
+        /** @constant */
+        preferredRegion: false;
+        reason: string;
+        /** @constant */
+        userLocalTime: false;
+      };
+      breakdowns: {
+        /** @description Device category used by the visitor. */
+        device: {
+          /** @description Display name of the resource. */
+          name: string;
+          users: number;
+        }[];
+        /** @description Preferred language reported by the visitor browser. */
+        language: {
+          /** @description Display name of the resource. */
+          name: string;
+          users: number;
+        }[];
+        platform: {
+          /** @description Display name of the resource. */
+          name: string;
+          users: number;
+        }[];
+        /** @description Region or subdivision of the visitor. */
+        region: {
+          /** @description Display name of the resource. */
+          name: string;
+          users: number;
+        }[];
+      };
+      criteria: {
+        rule: string;
+        verification: string;
+        verified: boolean;
+      };
+      identity: {
+        /** @constant */
+        source: 'clientUser';
+        /** @constant */
+        unidentifiedEventsExcluded: true;
+        /**
+         * @description Time interval used to group results: minute, hour, day, month, or year.
+         * @constant
+         */
+        unit: 'appUser';
+      };
+      patterns: {
+        dayOfWeek: {
+          bucket: string;
+          users: number;
+        }[];
+        dayOfWeekFourWeeks: {
+          bucket: string;
+          users: number;
+        }[];
+        hourOfDay: {
+          bucket: string;
+          users: number;
+        }[];
+        hourOfDayFourWeeks: {
+          bucket: string;
+          users: number;
+        }[];
+        weekpart: {
+          bucket: string;
+          users: number;
+        }[];
+        weekpartFourWeeks: {
+          bucket: string;
+          users: number;
+        }[];
+      };
+      query: {
+        grains: {
+          daily: {
+            /**
+             * @description Time interval used to group results: minute, hour, day, month, or year.
+             * @constant
+             */
+            unit: 'day';
+            /** @constant */
+            window: 'selectedRange';
+          };
+          hourly: {
+            /**
+             * @description Time interval used to group results: minute, hour, day, month, or year.
+             * @constant
+             */
+            unit: 'hour';
+            /** @constant */
+            window: 'last24HoursWithinSelectedRange';
+          };
+          monthly: {
+            /**
+             * @description Time interval used to group results: minute, hour, day, month, or year.
+             * @constant
+             */
+            unit: 'month';
+            /** @constant */
+            window: 'last366DaysWithinSelectedRange';
+          };
+          weekly: {
+            /**
+             * @description Time interval used to group results: minute, hour, day, month, or year.
+             * @constant
+             */
+            unit: 'week';
+            /** @constant */
+            window: 'last93DaysWithinSelectedRange';
+          };
+        };
+      };
+      range: {
+        /**
+         * Format: date-time
+         * @description End of the date range as a Unix timestamp in milliseconds.
+         */
+        endAt: string;
+        /**
+         * Format: date-time
+         * @description Start of the date range as a Unix timestamp in milliseconds.
+         */
+        startAt: string;
+        testMode: boolean;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone: string;
+      };
+      scope: {
+        identifiedSignals: number;
+        returningUsers: number;
+        totalSignals: number;
+      };
+      series: {
+        daily: {
+          bucket: string;
+          returningUsers: number;
+        }[];
+        hourly: {
+          bucket: string;
+          returningUsers: number;
+        }[];
+        monthly: {
+          bucket: string;
+          returningUsers: number;
+        }[];
+        weekly: {
+          bucket: string;
+          returningUsers: number;
+        }[];
+      };
+    };
+    AppVersionsReport: {
+      /** @enum {string} */
+      dimension: 'appVersion' | 'buildNumber' | 'sdkVersion';
+      reportedEvents: number;
+      totalEvents: number;
+      values: {
+        events: number;
+        value: string | null;
+      }[];
     };
     CreateWebsiteRequest: {
       /** @description Domain name associated with the resource. */
@@ -7645,6 +8497,132 @@ export interface operations {
            *         "code": "not-found",
            *         "message": "Not found.",
            *         "status": 404
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getMeDiscovery: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            choice:
+              | ('search' | 'recommendation' | 'community' | 'content' | 'comparison' | 'other')
+              | null;
+          };
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  postMeDiscovery: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @enum {string} */
+          choice: 'search' | 'recommendation' | 'community' | 'content' | 'comparison' | 'other';
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @enum {string} */
+            choice: 'search' | 'recommendation' | 'community' | 'content' | 'comparison' | 'other';
+          };
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
            *       }
            *     }
            */
@@ -13189,6 +14167,1398 @@ export interface operations {
            *         "code": "not-found",
            *         "message": "Not found.",
            *         "status": 404
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getAppAccessibilityReport: {
+    parameters: {
+      query?: {
+        /** @description Browser used by the visitor. */
+        browser?: string;
+        /** @description City of the visitor. */
+        city?: string;
+        /** @description ID of a saved cohort used to filter visitors. */
+        cohort?: string;
+        /** @description Comparison period: prev for the previous period or yoy for the same period last year. */
+        compare?: 'prev' | 'yoy';
+        /** @description Country code of the visitor. */
+        country?: string;
+        /** @description Device category used by the visitor. */
+        device?: string;
+        /** @description Custom identifier assigned to the visitor. */
+        distinctId?: string;
+        /** @description End of the date range as a Unix timestamp in milliseconds. */
+        endAt?: number;
+        /** @description End of the date range as an ISO 8601 date or date-time. */
+        endDate?: string;
+        /** @description Filter by custom event name. */
+        event?: string;
+        /** @description Event type: 1 for a pageview or 2 for a custom event. */
+        eventType?: number;
+        /** @description Set a non-empty value to exclude visits with only one pageview. */
+        excludeBounce?: string;
+        /** @description Hostname on which the activity occurred. */
+        hostname?: string;
+        /** @description Preferred language reported by the visitor browser. */
+        language?: string;
+        /** @description Whether records must match all filters or any filter. */
+        match?: 'all' | 'any';
+        /** @description Operating system used by the visitor. */
+        os?: string;
+        /** @description Filter by page URL path. */
+        path?: string;
+        /** @description Relative date range, for example 7d or 30day, used instead of an explicit startAt/endAt range. */
+        period?:
+          | 'today'
+          | '24h'
+          | '7d'
+          | '30d'
+          | '0day'
+          | '24hour'
+          | '0week'
+          | '7day'
+          | '0month'
+          | '30day'
+          | '90day'
+          | '0year'
+          | '6month'
+          | '12month';
+        /** @description Filter by page URL query string. */
+        query?: string;
+        /** @description Filter by referring URL. */
+        referrer?: string;
+        /** @description Region or subdivision of the visitor. */
+        region?: string;
+        /** @description ID of a saved segment used to filter results. */
+        segment?: string;
+        /** @description Start of the date range as a Unix timestamp in milliseconds. */
+        startAt?: number;
+        /** @description Start of the date range as an ISO 8601 date or date-time. */
+        startDate?: string;
+        /** @description Tag attached to the tracked activity. */
+        tag?: string;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone?: string;
+        /** @description Filter by page title. */
+        title?: string;
+        /** @description Time interval used to group results: minute, hour, day, month, or year. */
+        unit?: string;
+        /** @description UTM campaign name. */
+        utmCampaign?: string;
+        /** @description UTM campaign content. */
+        utmContent?: string;
+        /** @description UTM campaign medium. */
+        utmMedium?: string;
+        /** @description UTM campaign source. */
+        utmSource?: string;
+        /** @description UTM campaign search term. */
+        utmTerm?: string;
+      };
+      header?: never;
+      path: {
+        /** @description Website ID. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description App accessibility report. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AppAccessibilityReport'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getAppAcquisitionReport: {
+    parameters: {
+      query?: {
+        /** @description Browser used by the visitor. */
+        browser?: string;
+        /** @description City of the visitor. */
+        city?: string;
+        /** @description ID of a saved cohort used to filter visitors. */
+        cohort?: string;
+        /** @description Comparison period: prev for the previous period or yoy for the same period last year. */
+        compare?: 'prev' | 'yoy';
+        /** @description Country code of the visitor. */
+        country?: string;
+        /** @description Device category used by the visitor. */
+        device?: string;
+        /** @description Custom identifier assigned to the visitor. */
+        distinctId?: string;
+        /** @description End of the date range as a Unix timestamp in milliseconds. */
+        endAt?: number;
+        /** @description End of the date range as an ISO 8601 date or date-time. */
+        endDate?: string;
+        /** @description Filter by custom event name. */
+        event?: string;
+        /** @description Event type: 1 for a pageview or 2 for a custom event. */
+        eventType?: number;
+        /** @description Set a non-empty value to exclude visits with only one pageview. */
+        excludeBounce?: string;
+        /** @description Hostname on which the activity occurred. */
+        hostname?: string;
+        /** @description Preferred language reported by the visitor browser. */
+        language?: string;
+        /** @description Whether records must match all filters or any filter. */
+        match?: 'all' | 'any';
+        /** @description Operating system used by the visitor. */
+        os?: string;
+        /** @description Filter by page URL path. */
+        path?: string;
+        /** @description Relative date range, for example 7d or 30day, used instead of an explicit startAt/endAt range. */
+        period?:
+          | 'today'
+          | '24h'
+          | '7d'
+          | '30d'
+          | '0day'
+          | '24hour'
+          | '0week'
+          | '7day'
+          | '0month'
+          | '30day'
+          | '90day'
+          | '0year'
+          | '6month'
+          | '12month';
+        /** @description Filter by page URL query string. */
+        query?: string;
+        /** @description Filter by referring URL. */
+        referrer?: string;
+        /** @description Region or subdivision of the visitor. */
+        region?: string;
+        /** @description ID of a saved segment used to filter results. */
+        segment?: string;
+        /** @description Start of the date range as a Unix timestamp in milliseconds. */
+        startAt?: number;
+        /** @description Start of the date range as an ISO 8601 date or date-time. */
+        startDate?: string;
+        /** @description Tag attached to the tracked activity. */
+        tag?: string;
+        testMode?: 'true' | 'false';
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone?: string;
+        /** @description Filter by page title. */
+        title?: string;
+        /** @description Time interval used to group results: minute, hour, day, month, or year. */
+        unit?: string;
+        /** @description UTM campaign name. */
+        utmCampaign?: string;
+        /** @description UTM campaign content. */
+        utmContent?: string;
+        /** @description UTM campaign medium. */
+        utmMedium?: string;
+        /** @description UTM campaign source. */
+        utmSource?: string;
+        /** @description UTM campaign search term. */
+        utmTerm?: string;
+      };
+      header?: never;
+      path: {
+        /** @description Website ID. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description App acquisition report. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AppAcquisitionReport'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getAppActivationReport: {
+    parameters: {
+      query?: {
+        /** @description Browser used by the visitor. */
+        browser?: string;
+        /** @description City of the visitor. */
+        city?: string;
+        /** @description ID of a saved cohort used to filter visitors. */
+        cohort?: string;
+        /** @description Comparison period: prev for the previous period or yoy for the same period last year. */
+        compare?: 'prev' | 'yoy';
+        /** @description Country code of the visitor. */
+        country?: string;
+        /** @description Device category used by the visitor. */
+        device?: string;
+        /** @description Custom identifier assigned to the visitor. */
+        distinctId?: string;
+        /** @description End of the date range as a Unix timestamp in milliseconds. */
+        endAt?: number;
+        /** @description End of the date range as an ISO 8601 date or date-time. */
+        endDate?: string;
+        /** @description Filter by custom event name. */
+        event?: string;
+        /** @description Event type: 1 for a pageview or 2 for a custom event. */
+        eventType?: number;
+        /** @description Set a non-empty value to exclude visits with only one pageview. */
+        excludeBounce?: string;
+        /** @description Hostname on which the activity occurred. */
+        hostname?: string;
+        /** @description Preferred language reported by the visitor browser. */
+        language?: string;
+        /** @description Whether records must match all filters or any filter. */
+        match?: 'all' | 'any';
+        /** @description Operating system used by the visitor. */
+        os?: string;
+        /** @description Filter by page URL path. */
+        path?: string;
+        /** @description Relative date range, for example 7d or 30day, used instead of an explicit startAt/endAt range. */
+        period?:
+          | 'today'
+          | '24h'
+          | '7d'
+          | '30d'
+          | '0day'
+          | '24hour'
+          | '0week'
+          | '7day'
+          | '0month'
+          | '30day'
+          | '90day'
+          | '0year'
+          | '6month'
+          | '12month';
+        /** @description Filter by page URL query string. */
+        query?: string;
+        /** @description Filter by referring URL. */
+        referrer?: string;
+        /** @description Region or subdivision of the visitor. */
+        region?: string;
+        /** @description ID of a saved segment used to filter results. */
+        segment?: string;
+        /** @description Start of the date range as a Unix timestamp in milliseconds. */
+        startAt?: number;
+        /** @description Start of the date range as an ISO 8601 date or date-time. */
+        startDate?: string;
+        /** @description Tag attached to the tracked activity. */
+        tag?: string;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone?: string;
+        /** @description Filter by page title. */
+        title?: string;
+        /** @description Time interval used to group results: minute, hour, day, month, or year. */
+        unit?: string;
+        /** @description UTM campaign name. */
+        utmCampaign?: string;
+        /** @description UTM campaign content. */
+        utmContent?: string;
+        /** @description UTM campaign medium. */
+        utmMedium?: string;
+        /** @description UTM campaign source. */
+        utmSource?: string;
+        /** @description UTM campaign search term. */
+        utmTerm?: string;
+      };
+      header?: never;
+      path: {
+        /** @description Website ID. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description App activation report. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AppActivationReport'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getAppDevicesReport: {
+    parameters: {
+      query?: {
+        /** @description Browser used by the visitor. */
+        browser?: string;
+        /** @description City of the visitor. */
+        city?: string;
+        /** @description ID of a saved cohort used to filter visitors. */
+        cohort?: string;
+        /** @description Comparison period: prev for the previous period or yoy for the same period last year. */
+        compare?: 'prev' | 'yoy';
+        /** @description Country code of the visitor. */
+        country?: string;
+        /** @description Device category used by the visitor. */
+        device?: string;
+        /** @description Custom identifier assigned to the visitor. */
+        distinctId?: string;
+        /** @description End of the date range as a Unix timestamp in milliseconds. */
+        endAt?: number;
+        /** @description End of the date range as an ISO 8601 date or date-time. */
+        endDate?: string;
+        /** @description Filter by custom event name. */
+        event?: string;
+        /** @description Event type: 1 for a pageview or 2 for a custom event. */
+        eventType?: number;
+        /** @description Set a non-empty value to exclude visits with only one pageview. */
+        excludeBounce?: string;
+        /** @description Hostname on which the activity occurred. */
+        hostname?: string;
+        /** @description Preferred language reported by the visitor browser. */
+        language?: string;
+        /** @description Whether records must match all filters or any filter. */
+        match?: 'all' | 'any';
+        /** @description Operating system used by the visitor. */
+        os?: string;
+        /** @description Filter by page URL path. */
+        path?: string;
+        /** @description Relative date range, for example 7d or 30day, used instead of an explicit startAt/endAt range. */
+        period?:
+          | 'today'
+          | '24h'
+          | '7d'
+          | '30d'
+          | '0day'
+          | '24hour'
+          | '0week'
+          | '7day'
+          | '0month'
+          | '30day'
+          | '90day'
+          | '0year'
+          | '6month'
+          | '12month';
+        /** @description Filter by page URL query string. */
+        query?: string;
+        /** @description Filter by referring URL. */
+        referrer?: string;
+        /** @description Region or subdivision of the visitor. */
+        region?: string;
+        /** @description ID of a saved segment used to filter results. */
+        segment?: string;
+        /** @description Start of the date range as a Unix timestamp in milliseconds. */
+        startAt?: number;
+        /** @description Start of the date range as an ISO 8601 date or date-time. */
+        startDate?: string;
+        /** @description Tag attached to the tracked activity. */
+        tag?: string;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone?: string;
+        /** @description Filter by page title. */
+        title?: string;
+        /** @description Time interval used to group results: minute, hour, day, month, or year. */
+        unit?: string;
+        /** @description UTM campaign name. */
+        utmCampaign?: string;
+        /** @description UTM campaign content. */
+        utmContent?: string;
+        /** @description UTM campaign medium. */
+        utmMedium?: string;
+        /** @description UTM campaign source. */
+        utmSource?: string;
+        /** @description UTM campaign search term. */
+        utmTerm?: string;
+      };
+      header?: never;
+      path: {
+        /** @description Website ID. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description App devices report. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AppDevicesReport'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getAppEventTypesReport: {
+    parameters: {
+      query?: {
+        /** @description Browser used by the visitor. */
+        browser?: string;
+        /** @description City of the visitor. */
+        city?: string;
+        /** @description ID of a saved cohort used to filter visitors. */
+        cohort?: string;
+        /** @description Comparison period: prev for the previous period or yoy for the same period last year. */
+        compare?: 'prev' | 'yoy';
+        /** @description Country code of the visitor. */
+        country?: string;
+        /** @description Device category used by the visitor. */
+        device?: string;
+        /** @description Custom identifier assigned to the visitor. */
+        distinctId?: string;
+        /** @description End of the date range as a Unix timestamp in milliseconds. */
+        endAt?: number;
+        /** @description End of the date range as an ISO 8601 date or date-time. */
+        endDate?: string;
+        /** @description Filter by custom event name. */
+        event?: string;
+        /** @description Event type: 1 for a pageview or 2 for a custom event. */
+        eventType?: number;
+        /** @description Set a non-empty value to exclude visits with only one pageview. */
+        excludeBounce?: string;
+        /** @description Hostname on which the activity occurred. */
+        hostname?: string;
+        /** @description Preferred language reported by the visitor browser. */
+        language?: string;
+        /** @description Whether records must match all filters or any filter. */
+        match?: 'all' | 'any';
+        /** @description Operating system used by the visitor. */
+        os?: string;
+        /** @description Filter by page URL path. */
+        path?: string;
+        /** @description Relative date range, for example 7d or 30day, used instead of an explicit startAt/endAt range. */
+        period?:
+          | 'today'
+          | '24h'
+          | '7d'
+          | '30d'
+          | '0day'
+          | '24hour'
+          | '0week'
+          | '7day'
+          | '0month'
+          | '30day'
+          | '90day'
+          | '0year'
+          | '6month'
+          | '12month';
+        /** @description Filter by page URL query string. */
+        query?: string;
+        /** @description Filter by referring URL. */
+        referrer?: string;
+        /** @description Region or subdivision of the visitor. */
+        region?: string;
+        /** @description ID of a saved segment used to filter results. */
+        segment?: string;
+        /** @description Start of the date range as a Unix timestamp in milliseconds. */
+        startAt?: number;
+        /** @description Start of the date range as an ISO 8601 date or date-time. */
+        startDate?: string;
+        /** @description Tag attached to the tracked activity. */
+        tag?: string;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone?: string;
+        /** @description Filter by page title. */
+        title?: string;
+        /** @description Time interval used to group results: minute, hour, day, month, or year. */
+        unit?: string;
+        /** @description UTM campaign name. */
+        utmCampaign?: string;
+        /** @description UTM campaign content. */
+        utmContent?: string;
+        /** @description UTM campaign medium. */
+        utmMedium?: string;
+        /** @description UTM campaign source. */
+        utmSource?: string;
+        /** @description UTM campaign search term. */
+        utmTerm?: string;
+      };
+      header?: never;
+      path: {
+        /** @description Website ID. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description App event types report. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AppEventTypesReport'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getAppOverviewReport: {
+    parameters: {
+      query?: {
+        /** @description Browser used by the visitor. */
+        browser?: string;
+        /** @description City of the visitor. */
+        city?: string;
+        /** @description ID of a saved cohort used to filter visitors. */
+        cohort?: string;
+        /** @description Comparison period: prev for the previous period or yoy for the same period last year. */
+        compare?: 'prev' | 'yoy';
+        /** @description Country code of the visitor. */
+        country?: string;
+        /** @description Device category used by the visitor. */
+        device?: string;
+        /** @description Custom identifier assigned to the visitor. */
+        distinctId?: string;
+        /** @description End of the date range as a Unix timestamp in milliseconds. */
+        endAt?: number;
+        /** @description End of the date range as an ISO 8601 date or date-time. */
+        endDate?: string;
+        /** @description Filter by custom event name. */
+        event?: string;
+        /** @description Event type: 1 for a pageview or 2 for a custom event. */
+        eventType?: number;
+        /** @description Set a non-empty value to exclude visits with only one pageview. */
+        excludeBounce?: string;
+        /** @description Hostname on which the activity occurred. */
+        hostname?: string;
+        /** @description Preferred language reported by the visitor browser. */
+        language?: string;
+        /** @description Whether records must match all filters or any filter. */
+        match?: 'all' | 'any';
+        /** @description Operating system used by the visitor. */
+        os?: string;
+        /** @description Filter by page URL path. */
+        path?: string;
+        /** @description Relative date range, for example 7d or 30day, used instead of an explicit startAt/endAt range. */
+        period?:
+          | 'today'
+          | '24h'
+          | '7d'
+          | '30d'
+          | '0day'
+          | '24hour'
+          | '0week'
+          | '7day'
+          | '0month'
+          | '30day'
+          | '90day'
+          | '0year'
+          | '6month'
+          | '12month';
+        /** @description Filter by page URL query string. */
+        query?: string;
+        /** @description Filter by referring URL. */
+        referrer?: string;
+        /** @description Region or subdivision of the visitor. */
+        region?: string;
+        /** @description ID of a saved segment used to filter results. */
+        segment?: string;
+        /** @description Start of the date range as a Unix timestamp in milliseconds. */
+        startAt?: number;
+        /** @description Start of the date range as an ISO 8601 date or date-time. */
+        startDate?: string;
+        /** @description Tag attached to the tracked activity. */
+        tag?: string;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone?: string;
+        /** @description Filter by page title. */
+        title?: string;
+        /** @description Time interval used to group results: minute, hour, day, month, or year. */
+        unit?: string;
+        /** @description UTM campaign name. */
+        utmCampaign?: string;
+        /** @description UTM campaign content. */
+        utmContent?: string;
+        /** @description UTM campaign medium. */
+        utmMedium?: string;
+        /** @description UTM campaign source. */
+        utmSource?: string;
+        /** @description UTM campaign search term. */
+        utmTerm?: string;
+      };
+      header?: never;
+      path: {
+        /** @description Website ID. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description App overview report. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AppOverviewReport'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getAppRetentionReport: {
+    parameters: {
+      query?: {
+        /** @description Browser used by the visitor. */
+        browser?: string;
+        /** @description City of the visitor. */
+        city?: string;
+        /** @description ID of a saved cohort used to filter visitors. */
+        cohort?: string;
+        /** @description Comparison period: prev for the previous period or yoy for the same period last year. */
+        compare?: 'prev' | 'yoy';
+        /** @description Country code of the visitor. */
+        country?: string;
+        /** @description Device category used by the visitor. */
+        device?: string;
+        /** @description Custom identifier assigned to the visitor. */
+        distinctId?: string;
+        /** @description End of the date range as a Unix timestamp in milliseconds. */
+        endAt?: number;
+        /** @description End of the date range as an ISO 8601 date or date-time. */
+        endDate?: string;
+        /** @description Filter by custom event name. */
+        event?: string;
+        /** @description Event type: 1 for a pageview or 2 for a custom event. */
+        eventType?: number;
+        /** @description Set a non-empty value to exclude visits with only one pageview. */
+        excludeBounce?: string;
+        /** @description Hostname on which the activity occurred. */
+        hostname?: string;
+        /** @description Preferred language reported by the visitor browser. */
+        language?: string;
+        /** @description Whether records must match all filters or any filter. */
+        match?: 'all' | 'any';
+        /** @description Operating system used by the visitor. */
+        os?: string;
+        /** @description Filter by page URL path. */
+        path?: string;
+        /** @description Relative date range, for example 7d or 30day, used instead of an explicit startAt/endAt range. */
+        period?:
+          | 'today'
+          | '24h'
+          | '7d'
+          | '30d'
+          | '0day'
+          | '24hour'
+          | '0week'
+          | '7day'
+          | '0month'
+          | '30day'
+          | '90day'
+          | '0year'
+          | '6month'
+          | '12month';
+        /** @description Filter by page URL query string. */
+        query?: string;
+        /** @description Filter by referring URL. */
+        referrer?: string;
+        /** @description Region or subdivision of the visitor. */
+        region?: string;
+        /** @description ID of a saved segment used to filter results. */
+        segment?: string;
+        /** @description Start of the date range as a Unix timestamp in milliseconds. */
+        startAt?: number;
+        /** @description Start of the date range as an ISO 8601 date or date-time. */
+        startDate?: string;
+        /** @description Tag attached to the tracked activity. */
+        tag?: string;
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone?: string;
+        /** @description Filter by page title. */
+        title?: string;
+        /** @description Time interval used to group results: minute, hour, day, month, or year. */
+        unit?: string;
+        /** @description UTM campaign name. */
+        utmCampaign?: string;
+        /** @description UTM campaign content. */
+        utmContent?: string;
+        /** @description UTM campaign medium. */
+        utmMedium?: string;
+        /** @description UTM campaign source. */
+        utmSource?: string;
+        /** @description UTM campaign search term. */
+        utmTerm?: string;
+      };
+      header?: never;
+      path: {
+        /** @description Website ID. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description App retention report. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AppRetentionReport'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getAppVersionsReport: {
+    parameters: {
+      query: {
+        /** @description Comparison period: prev for the previous period or yoy for the same period last year. */
+        compare?: 'prev' | 'yoy';
+        dimension: 'appVersion' | 'buildNumber' | 'sdkVersion';
+        /** @description End of the date range as a Unix timestamp in milliseconds. */
+        endAt?: number;
+        /** @description End of the date range as an ISO 8601 date or date-time. */
+        endDate?: string;
+        /** @description Relative date range, for example 7d or 30day, used instead of an explicit startAt/endAt range. */
+        period?:
+          | 'today'
+          | '24h'
+          | '7d'
+          | '30d'
+          | '0day'
+          | '24hour'
+          | '0week'
+          | '7day'
+          | '0month'
+          | '30day'
+          | '90day'
+          | '0year'
+          | '6month'
+          | '12month';
+        /** @description Start of the date range as a Unix timestamp in milliseconds. */
+        startAt?: number;
+        /** @description Start of the date range as an ISO 8601 date or date-time. */
+        startDate?: string;
+        /** @description Tag attached to the tracked activity. */
+        tag?: 'test' | 'eq.test' | 'neq.test';
+        testMode?: 'true' | 'false';
+        /** @description IANA time zone used to interpret dates and group results, for example America/New_York. */
+        timezone?: string;
+        /** @description Time interval used to group results: minute, hour, day, month, or year. */
+        unit?: string;
+      };
+      header?: never;
+      path: {
+        /** @description Website ID. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description App versions report. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AppVersionsReport'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getWebsiteAppSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID of the website. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Website app settings. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            canWrite: boolean;
+            /** @enum {string} */
+            colorScheme: 'default' | 'vibrant' | 'high-contrast' | 'emo';
+            /** @enum {string} */
+            overviewLayout: 'application' | 'website';
+            /** @enum {string} */
+            revenueDisplayMode: 'none' | 'revenuecat';
+            /**
+             * Format: uuid
+             * @description ID of the website.
+             */
+            websiteId: string;
+          };
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Forbidden. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "forbidden",
+           *         "message": "Forbidden.",
+           *         "status": 403
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  updateWebsiteAppSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID of the website. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @enum {string} */
+          colorScheme: 'default' | 'vibrant' | 'high-contrast' | 'emo';
+          /** @enum {string} */
+          overviewLayout: 'application' | 'website';
+          /** @enum {string} */
+          revenueDisplayMode: 'none' | 'revenuecat';
+        };
+      };
+    };
+    responses: {
+      /** @description Website app settings updated. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            canWrite: boolean;
+            /** @enum {string} */
+            colorScheme: 'default' | 'vibrant' | 'high-contrast' | 'emo';
+            /** @enum {string} */
+            overviewLayout: 'application' | 'website';
+            /** @enum {string} */
+            revenueDisplayMode: 'none' | 'revenuecat';
+            /**
+             * Format: uuid
+             * @description ID of the website.
+             */
+            websiteId: string;
+          };
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Forbidden. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "forbidden",
+           *         "message": "Forbidden.",
+           *         "status": 403
            *       }
            *     }
            */
@@ -18905,6 +21275,498 @@ export interface operations {
       };
     };
   };
+  listWebsiteNotebooks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID of the website. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Website notebooks. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            canWrite: boolean;
+            /** @description Data returned by the operation. */
+            data: {
+              /**
+               * Format: date-time
+               * @description Date and time the record was created.
+               */
+              createdAt: string;
+              /** @description ID of the user who created the resource. */
+              createdBy: string | null;
+              /**
+               * Format: uuid
+               * @description Unique identifier of the resource.
+               */
+              id: string;
+              /** @description Title of the page. */
+              title: string;
+              /**
+               * Format: date-time
+               * @description Date and time the record was last updated.
+               */
+              updatedAt: string;
+              /**
+               * Format: uuid
+               * @description ID of the website.
+               */
+              websiteId: string;
+            }[];
+          };
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Forbidden. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "forbidden",
+           *         "message": "Forbidden.",
+           *         "status": 403
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  createWebsiteNotebook: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID of the website. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          content: {
+            blocks: {
+              checked?: boolean;
+              /** @description Unique identifier of the resource. */
+              id: string;
+              text: string;
+              /** @enum {string} */
+              type: 'heading' | 'paragraph' | 'checklist';
+            }[];
+            /** @constant */
+            version: 1;
+          };
+          /** @description Title of the page. */
+          title: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Notebook created. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            content: {
+              blocks: {
+                checked?: boolean;
+                /** @description Unique identifier of the resource. */
+                id: string;
+                text: string;
+                /** @enum {string} */
+                type: 'heading' | 'paragraph' | 'checklist';
+              }[];
+              /** @constant */
+              version: 1;
+            };
+            /**
+             * Format: date-time
+             * @description Date and time the record was created.
+             */
+            createdAt: string;
+            /** @description ID of the user who created the resource. */
+            createdBy: string | null;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the resource.
+             */
+            id: string;
+            /** @description Title of the page. */
+            title: string;
+            /**
+             * Format: date-time
+             * @description Date and time the record was last updated.
+             */
+            updatedAt: string;
+            /**
+             * Format: uuid
+             * @description ID of the website.
+             */
+            websiteId: string;
+          };
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Forbidden. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "forbidden",
+           *         "message": "Forbidden.",
+           *         "status": 403
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getWebsiteNotebook: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notebookId: string;
+        /** @description ID of the website. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Website notebook. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            canWrite: boolean;
+            /** @description Data returned by the operation. */
+            data: {
+              content: {
+                blocks: {
+                  checked?: boolean;
+                  /** @description Unique identifier of the resource. */
+                  id: string;
+                  text: string;
+                  /** @enum {string} */
+                  type: 'heading' | 'paragraph' | 'checklist';
+                }[];
+                /** @constant */
+                version: 1;
+              };
+              /**
+               * Format: date-time
+               * @description Date and time the record was created.
+               */
+              createdAt: string;
+              /** @description ID of the user who created the resource. */
+              createdBy: string | null;
+              /**
+               * Format: uuid
+               * @description Unique identifier of the resource.
+               */
+              id: string;
+              /** @description Title of the page. */
+              title: string;
+              /**
+               * Format: date-time
+               * @description Date and time the record was last updated.
+               */
+              updatedAt: string;
+              /**
+               * Format: uuid
+               * @description ID of the website.
+               */
+              websiteId: string;
+            };
+          };
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Forbidden. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "forbidden",
+           *         "message": "Forbidden.",
+           *         "status": 403
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "not-found",
+           *         "message": "Not found.",
+           *         "status": 404
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  updateWebsiteNotebook: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notebookId: string;
+        /** @description ID of the website. */
+        websiteId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          content: {
+            blocks: {
+              checked?: boolean;
+              /** @description Unique identifier of the resource. */
+              id: string;
+              text: string;
+              /** @enum {string} */
+              type: 'heading' | 'paragraph' | 'checklist';
+            }[];
+            /** @constant */
+            version: 1;
+          };
+          /** @description Title of the page. */
+          title: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Notebook updated. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            content: {
+              blocks: {
+                checked?: boolean;
+                /** @description Unique identifier of the resource. */
+                id: string;
+                text: string;
+                /** @enum {string} */
+                type: 'heading' | 'paragraph' | 'checklist';
+              }[];
+              /** @constant */
+              version: 1;
+            };
+            /**
+             * Format: date-time
+             * @description Date and time the record was created.
+             */
+            createdAt: string;
+            /** @description ID of the user who created the resource. */
+            createdBy: string | null;
+            /**
+             * Format: uuid
+             * @description Unique identifier of the resource.
+             */
+            id: string;
+            /** @description Title of the page. */
+            title: string;
+            /**
+             * Format: date-time
+             * @description Date and time the record was last updated.
+             */
+            updatedAt: string;
+            /**
+             * Format: uuid
+             * @description ID of the website.
+             */
+            websiteId: string;
+          };
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Forbidden. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "forbidden",
+           *         "message": "Forbidden.",
+           *         "status": 403
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Not found. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "not-found",
+           *         "message": "Not found.",
+           *         "status": 404
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
   getWebsitePageviews: {
     parameters: {
       query?: {
@@ -24309,6 +27171,107 @@ export interface operations {
       };
     };
   };
+  postWebsitesCardMetrics: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @description End of the date range as a Unix timestamp in milliseconds. */
+          endAt: number;
+          /** @description Start of the date range as a Unix timestamp in milliseconds. */
+          startAt: number;
+          /**
+           * Format: uuid
+           * @description ID of the associated team.
+           */
+          teamId?: string;
+          testMode: boolean;
+          websiteIds: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Data returned by the operation. */
+            data: {
+              errors: number;
+              users: number;
+              /**
+               * Format: uuid
+               * @description ID of the website.
+               */
+              websiteId: string;
+            }[];
+          };
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Server error. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "server-error",
+           *         "message": "Server error.",
+           *         "status": 500
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
   getWebsitesCharts: {
     parameters: {
       query: {
@@ -24357,6 +27320,232 @@ export interface operations {
                 values: number[];
               };
             };
+          };
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  getWorkspaceFolders: {
+    parameters: {
+      query?: {
+        /** @description ID of the associated team. */
+        teamId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            assignments: {
+              /** Format: uuid */
+              folderId: string;
+              /**
+               * Format: uuid
+               * @description ID of the website.
+               */
+              websiteId: string;
+            }[];
+            folders: {
+              /**
+               * Format: uuid
+               * @description Unique identifier of the resource.
+               */
+              id: string;
+              /** @description Display name of the resource. */
+              name: string;
+            }[];
+          };
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  putWorkspaceFolders: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          folderId: string | null;
+          /**
+           * Format: uuid
+           * @description ID of the associated team.
+           */
+          teamId?: string;
+          /**
+           * Format: uuid
+           * @description ID of the website.
+           */
+          websiteId: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Ok'];
+        };
+      };
+      /** @description Bad request. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "bad-request",
+           *         "message": "Bad request.",
+           *         "status": 400
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+      /** @description Unauthorized. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "unauthorized",
+           *         "message": "Unauthorized.",
+           *         "status": 401
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['ApiError'];
+        };
+      };
+    };
+  };
+  postWorkspaceFolders: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @description Display name of the resource. */
+          name: string;
+          /**
+           * Format: uuid
+           * @description ID of the associated team.
+           */
+          teamId?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /**
+             * Format: uuid
+             * @description Unique identifier of the resource.
+             */
+            id: string;
+            /** @description Display name of the resource. */
+            name: string;
           };
         };
       };
