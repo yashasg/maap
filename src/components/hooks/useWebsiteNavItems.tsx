@@ -201,14 +201,17 @@ export function useWebsiteNavItems(websiteId: string) {
     },
   ];
 
+  const rootPath = renderPath('').split('?')[0];
+  const currentPath = pathname.replace(/\/+$/, '');
   const selectedKey = items
     .flatMap(e => e.items)
-    .find(
-      ({ path }) =>
-        path &&
-        (pathname.endsWith(path.split('?')[0]) ||
-          (path.split('?')[0].endsWith('/errors') && pathname.includes('/errors/'))),
-    )?.id;
+    .find(({ path }) => {
+      const pagePath = path.split('?')[0];
+      return (
+        currentPath === pagePath ||
+        (pagePath !== rootPath && currentPath.startsWith(`${pagePath}/`))
+      );
+    })?.id;
 
   return { items, selectedKey, renderPath };
 }

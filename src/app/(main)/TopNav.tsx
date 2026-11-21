@@ -15,16 +15,16 @@ import workspaceStyles from './TopNav.module.css';
 import styles from './websites/[websiteId]/app-metrics/AppReports.module.css';
 
 export function TopNav({
-  appReports = false,
+  propertyReports = false,
   workspaceHome = false,
 }: {
-  appReports?: boolean;
+  propertyReports?: boolean;
   workspaceHome?: boolean;
 }) {
   const { websiteId, linkId, pixelId, boardId, teamId, query, router, updateParams, renderUrl } =
     useNavigation();
   const searchRef = useRef<HTMLInputElement>(null);
-  const standalone = appReports || workspaceHome;
+  const standalone = propertyReports || workspaceHome;
 
   const navigateToEntity = (basePath: string, value: string | number | null) => {
     if (value === null || value === undefined || value === '') {
@@ -84,13 +84,17 @@ export function TopNav({
       zIndex={100}
       backgroundColor="surface-raised"
       className={
-        appReports ? styles.topBar : workspaceHome ? workspaceStyles.workspaceTopBar : undefined
+        propertyReports
+          ? styles.topBar
+          : workspaceHome
+            ? workspaceStyles.workspaceTopBar
+            : undefined
       }
     >
       {standalone && (
         <Link
           href={renderUrl('/websites', false)}
-          className={appReports ? styles.brand : workspaceStyles.brand}
+          className={propertyReports ? styles.brand : workspaceStyles.brand}
           aria-label="Maap"
         >
           <Logo aria-hidden />
@@ -99,7 +103,7 @@ export function TopNav({
       <Row
         alignItems="center"
         className={
-          appReports ? styles.pickers : workspaceHome ? workspaceStyles.pickers : undefined
+          propertyReports ? styles.pickers : workspaceHome ? workspaceStyles.pickers : undefined
         }
       >
         <TeamsButton compact={standalone} />
@@ -109,7 +113,10 @@ export function TopNav({
               <Minus />
             </Icon>
             {(workspaceHome || websiteId) && (
-              <div className={workspaceHome ? workspaceStyles.workspaceAppPicker : undefined}>
+              <div
+                className={workspaceHome ? workspaceStyles.workspaceAppPicker : undefined}
+                style={{ minWidth: 0 }}
+              >
                 <WebsiteSelect
                   websiteId={websiteId}
                   teamId={teamId}
@@ -118,7 +125,7 @@ export function TopNav({
                   placeholder={workspaceHome ? 'Select an app' : undefined}
                   buttonProps={{
                     style: standalone
-                      ? { minWidth: 0, maxWidth: 'min(28vw, 200px)' }
+                      ? { minWidth: 0, width: '100%', maxWidth: 'min(28vw, 200px)' }
                       : { minWidth: 200, maxWidth: 200 },
                   }}
                 />
@@ -200,7 +207,7 @@ export function TopNav({
         </>
       )}
       {standalone ? (
-        <div className={appReports ? styles.account : workspaceStyles.account}>
+        <div className={propertyReports ? styles.account : workspaceStyles.account}>
           <UserButton showText={false} />
         </div>
       ) : (
