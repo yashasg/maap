@@ -196,7 +196,7 @@ test('clamps personal Cloud metrics to the six-month subscription floor', async 
 
   expect(response.status).toBe(200);
   expect(params).toMatchObject({
-    startDate: new Date('2026-05-01T07:00:00.000Z'),
+    startDate: new Date('2026-05-01T00:00:00'),
   });
 });
 

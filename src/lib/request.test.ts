@@ -43,6 +43,8 @@ beforeEach(() => {
 });
 
 test('uses the later Cloud subscription or reset floor without using the selected display start', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-11-20T12:00:00.000Z'));
   vi.stubEnv('CLOUD_MODE', '1');
   fetchAccountMock.mockResolvedValue({ hasSubscription: false } as any);
   fetchWebsiteMock.mockResolvedValue({
@@ -82,12 +84,12 @@ test('clamps a wholly disallowed range past its end while retaining the policy f
   const filters = await getQueryFilters(
     {
       startAt: String(+new Date('2026-01-01T00:00:00.000Z')),
-      endAt: String(+new Date('2026-04-30T23:59:59.999Z')),
+      endAt: String(+new Date('2026-04-30T23:59:59.999')),
     },
     'website-1',
   );
 
-  expect(filters.minimumDate).toEqual(new Date('2026-05-01T07:00:00.000Z'));
+  expect(filters.minimumDate).toEqual(new Date('2026-05-01T00:00:00'));
   expect(filters.startDate).toEqual(filters.minimumDate);
   expect(filters.startDate.getTime()).toBeGreaterThan(filters.endDate.getTime());
   vi.useRealTimers();
