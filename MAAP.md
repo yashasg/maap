@@ -29,7 +29,7 @@ Activation is private to accounts with access to the app; an Overview share does
 
 Migration `31_notebook_soft_delete_cleanup` permanently removes notebooks belonging to already soft-deleted apps and does the same on future soft deletions. It does not change live apps’ notebooks or analytics events.
 
-Open an iOS, macOS, or Android property at `/websites/<appID>` to see its Overview. The app name and summary sit above the report tabs; sections such as Metrics have their own sidebar. The website Traffic and Behavior menus do not appear in app reports. Report links are bookmarkable, for example `/websites/<appID>/app-reports/versions`, and retain the date range and Test Mode when navigating between reports. Regular website properties keep their existing analytics dashboard.
+Open an iOS, macOS, or Android property at `/websites/<appID>` to see its Overview. The app name and summary sit above the report tabs; sections such as Metrics have their own sidebar. On a cold load, Maap shows a loading indicator until it knows the property type, rather than briefly showing the website Traffic and Behavior menus. Report links are bookmarkable, for example `/websites/<appID>/app-reports/versions`, and retain the date range and Test Mode when navigating between reports. Regular website properties keep their existing analytics dashboard.
 
 Versions uses metadata on **each event**, not the browser value saved when a session began. “Not reported” means the SDK did not send the dimension or the collector did not retain it; older events are not backfilled. Use an isolated app and an explicit allowlist to evaluate additional SDK dimensions before enabling them for users.
 

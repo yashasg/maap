@@ -15,7 +15,25 @@ test('a native app can navigate every Metrics report without losing Test Mode', 
   const { id } = await created.json();
   try {
     const root = `/websites/${id}/app-reports`;
-    await page.goto(`${root}/versions?testMode=true&date=30day`);
+    const propertyRoute = `**/api/websites/${id}`;
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    await page.route(propertyRoute, async route => {
+      await pending;
+      await route.continue();
+    });
+    try {
+      await Promise.all([
+        page.waitForRequest(propertyRoute),
+        page.goto(`${root}/versions?testMode=true&date=30day`, { waitUntil: 'domcontentloaded' }),
+      ]);
+      await expect(page.locator('[data-slot="loading"]')).toBeVisible();
+      await expect(page.locator(`a[href*="/websites/${id}/events"]`)).toHaveCount(0);
+    } finally {
+      release();
+    }
     const sidebar = page.getByRole('navigation', { name: 'Metrics reports' });
     for (const name of ['Devices', 'Errors', 'Localization', 'Accessibility', 'Versions']) {
       const link = sidebar.getByRole('link', { name, exact: true });

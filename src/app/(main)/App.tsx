@@ -39,7 +39,7 @@ export function App({ children }) {
   const passwordChangeRequired = !!user?.passwordChangeRequired && !config.cloudMode;
   const accessBlocked = needsTwoFactorSetup || passwordChangeRequired;
   const reportPath = isAppReportPath(pathname, websiteId);
-  const { data: property } = useWebsiteQuery(websiteId, {
+  const { data: property, isLoading: isPropertyLoading } = useWebsiteQuery(websiteId, {
     enabled: !!user && reportPath && !isBlockedTeam && !accessBlocked,
     placeholderData: undefined,
   });
@@ -111,6 +111,10 @@ export function App({ children }) {
         </Column>
       </Grid>
     );
+  }
+
+  if (reportPath && !accessBlocked && isPropertyLoading) {
+    return <Loading placement="absolute" />;
   }
 
   return (
