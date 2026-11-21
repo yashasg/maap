@@ -5,10 +5,7 @@ import { useEffect } from 'react';
 import { MobileNav } from '@/app/(main)/MobileNav';
 import { SideNav } from '@/app/(main)/SideNav';
 import { TopNav } from '@/app/(main)/TopNav';
-import {
-  isAppReportPath,
-  isNativeApp,
-} from '@/app/(main)/websites/[websiteId]/app-metrics/report-layout';
+import { isPropertyPath } from '@/app/(main)/websites/[websiteId]/app-metrics/report-layout';
 import {
   useConfig,
   useLoginQuery,
@@ -38,14 +35,14 @@ export function App({ children }) {
   const needsTwoFactorSetup = !!(twoFactorStatus?.isRequired && !twoFactorStatus?.isEnabled);
   const passwordChangeRequired = !!user?.passwordChangeRequired && !config.cloudMode;
   const accessBlocked = needsTwoFactorSetup || passwordChangeRequired;
-  const reportPath = isAppReportPath(pathname, websiteId);
+  const reportPath = isPropertyPath(pathname, websiteId);
   const { data: property, isLoading: isPropertyLoading } = useWebsiteQuery(websiteId, {
     enabled: !!user && reportPath && !isBlockedTeam && !accessBlocked,
     placeholderData: undefined,
   });
-  const appReports = reportPath && property?.id === websiteId && isNativeApp(property?.domain);
+  const propertyReports = reportPath && property?.id === websiteId;
   const workspaceHome = /^\/(?:teams\/[a-f0-9-]+\/)?websites\/?$/i.test(pathname);
-  const standalone = appReports || workspaceHome;
+  const standalone = propertyReports || workspaceHome;
 
   useEffect(() => {
     if (teamId) {
@@ -138,7 +135,7 @@ export function App({ children }) {
         </>
       )}
       <Column overflowX="hidden" minHeight="0" position="relative">
-        <TopNav appReports={appReports} workspaceHome={workspaceHome} />
+        <TopNav propertyReports={propertyReports} workspaceHome={workspaceHome} />
         <Column
           alignItems="center"
           aria-hidden={accessBlocked || undefined}

@@ -1,11 +1,12 @@
 import { Column, Grid, Row } from '@umami/react-zen';
-import { useShare } from '@/components/hooks';
+import { useNavigation, useShare } from '@/components/hooks';
 import { ExportButton } from '@/components/input/ExportButton';
 import { FilterBar } from '@/components/input/FilterBar';
 import { MonthFilter } from '@/components/input/MonthFilter';
 import { WebsiteDateFilter } from '@/components/input/WebsiteDateFilter';
 import { WebsiteFilterButton } from '@/components/input/WebsiteFilterButton';
 import { allowShareFilter } from '@/lib/share';
+import { isPropertyPath } from './app-metrics/report-layout';
 
 export function WebsiteControls({
   websiteId,
@@ -25,7 +26,12 @@ export function WebsiteControls({
   allowCompare?: boolean;
 }) {
   const share = useShare();
+  const { pathname, websiteId: currentWebsiteId } = useNavigation();
   const showFilter = allowFilter && allowShareFilter(share?.parameters);
+  const showDateFilter =
+    allowDateFilter && !isPropertyPath(pathname, websiteId ?? currentWebsiteId);
+
+  if (!showFilter && !showDateFilter && !allowDownload && !allowMonthFilter) return null;
 
   return (
     <Column gap>
@@ -36,7 +42,7 @@ export function WebsiteControls({
           )}
         </Row>
         <Row alignItems="center" justifyContent={{ base: 'flex-start', md: 'flex-end' }}>
-          {allowDateFilter && (
+          {showDateFilter && (
             <WebsiteDateFilter websiteId={websiteId} allowCompare={allowCompare} />
           )}
           {allowDownload && <ExportButton websiteId={websiteId} />}

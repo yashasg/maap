@@ -4,14 +4,22 @@ import { useNavigation } from '@/components/hooks';
 import { WebsiteDateFilter } from '@/components/input/WebsiteDateFilter';
 import styles from './AppReports.module.css';
 
-export function AppReportControls({ websiteId }: { websiteId: string }) {
+export function AppReportControls({
+  websiteId,
+  allowDateFilter = true,
+  allowCompare = false,
+}: {
+  websiteId: string;
+  allowDateFilter?: boolean;
+  allowCompare?: boolean;
+}) {
   const { query, router, updateParams } = useNavigation();
   const t = useTranslations('appReportsNav');
   const testTag = query.tag === 'test' || query.tag === 'eq.test';
   const enabled = query.testMode === 'true' || testTag;
   return (
     <div className={styles.controls}>
-      <WebsiteDateFilter websiteId={websiteId} />
+      {allowDateFilter && <WebsiteDateFilter websiteId={websiteId} allowCompare={allowCompare} />}
       <button
         type="button"
         aria-label={t('test-mode')}
