@@ -10,7 +10,6 @@ import {
   StatusLight,
   Text,
 } from '@umami/react-zen';
-import { isSameDay } from 'date-fns';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { useMessages, useMobile, useSessionActivityQuery, useTimezone } from '@/components/hooks';
 import { Eye, FileText } from '@/components/icons';
@@ -59,12 +58,13 @@ export function SessionActivity({
     <LoadingPanel data={data} isLoading={isLoading} error={error}>
       <Column gap>
         {data?.map(({ eventId, createdAt, urlPath, eventName, visitId, hostname, hasData }) => {
-          const showHeader = !lastDay || !isSameDay(new Date(lastDay), new Date(createdAt));
-          lastDay = createdAt;
+          const day = formatTimezoneDate(createdAt, 'PPPP');
+          const showHeader = lastDay !== day;
+          lastDay = day;
 
           return (
             <Column key={eventId} gap>
-              {showHeader && <Heading size="lg">{formatTimezoneDate(createdAt, 'PPPP')}</Heading>}
+              {showHeader && <Heading size="lg">{day}</Heading>}
               <Row alignItems="center" gap="6" height="40px" style={{ minWidth: 0 }}>
                 <StatusLight color={`#${visitId?.substring(0, 6)}`}>
                   <Text wrap="nowrap">{formatTimezoneDate(createdAt, 'pp')}</Text>

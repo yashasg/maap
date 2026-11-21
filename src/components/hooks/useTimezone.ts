@@ -1,4 +1,4 @@
-import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime, toDate, toZonedTime } from 'date-fns-tz';
 import { TIMEZONE_CONFIG, TIMEZONE_LEGACY } from '@/lib/constants';
 import { getTimezone } from '@/lib/date';
 import { setItem } from '@/lib/storage';
@@ -18,14 +18,9 @@ export function useTimezone() {
   };
 
   const formatTimezoneDate = (date: string, pattern: string) => {
-    return formatInTimeZone(
-      /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})?Z$/.test(date)
-        ? date
-        : `${date.split(' ').join('T')}Z`,
-      timezone,
-      pattern,
-      { locale: dateLocale },
-    );
+    return formatInTimeZone(toDate(date, { timeZone: 'UTC' }), timezone, pattern, {
+      locale: dateLocale,
+    });
   };
 
   const formatSeriesTimezone = (data: any, column: string, timezone: string) => {
