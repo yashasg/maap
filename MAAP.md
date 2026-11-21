@@ -19,6 +19,14 @@ older than five minutes use their SDK timestamp; fresh signals use Umami's live
 session clock. A parsed batch is acknowledged even if individual signals fail.
 Inspect the counts, not just HTTP 200.
 
+Browser ingestion supports cross-origin JSON `POST` and `OPTIONS` preflights at
+`/api/send`, `/api/batch`, `/v2`, `/v2/`, and `/v2/namespace/<name>` (with or
+without a trailing slash). Send without cookies or other browser credentials;
+`Content-Type` and `x-umami-cache` are allowed. Success and error responses are
+browser-readable, including partial-batch counts. Dashboard authentication is
+unchanged. Any ingress proxy must expose these paths without a login challenge
+and pass through `OPTIONS` and the collector's CORS headers.
+
 ## App reports
 
 The interface uses [Satoshi by Indian Type Foundry](https://www.fontshare.com/fonts/satoshi). Maap serves the font locally: the normal development, source build, or container startup fetches the unmodified variable WOFF2 once from Fontshare under its [Free Font License](https://www.fontshare.com/licenses/ffl). No browser request goes to a font provider. For an offline install, run `pnpm font:setup` while online and retain `public/fonts/satoshi-variable.woff2` on that instance. Without it, the interface falls back to the system font.

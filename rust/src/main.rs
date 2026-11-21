@@ -787,40 +787,53 @@ async fn fallback_proxy(State(state): State<AppState>, req: Request) -> Response
 }
 
 pub fn build_router(state: AppState) -> Router {
-    let router = Router::new()
-        .route("/api/heartbeat", get(heartbeat))
+    let collection = Router::new()
         .route(
             "/api/send",
-            post(handle_send)
-                .options(|| async { StatusCode::NO_CONTENT })
-                .layer::<_, std::convert::Infallible>(axum::middleware::map_response(
-                    |mut res: Response| async move {
-                        let headers = res.headers_mut();
-                        headers.insert(
-                            header::ACCESS_CONTROL_ALLOW_ORIGIN,
-                            HeaderValue::from_static("*"),
-                        );
-                        headers.insert(
-                            header::ACCESS_CONTROL_ALLOW_HEADERS,
-                            HeaderValue::from_static("*"),
-                        );
-                        headers.insert(
-                            header::ACCESS_CONTROL_ALLOW_METHODS,
-                            HeaderValue::from_static("POST, OPTIONS"),
-                        );
-                        headers.insert(
-                            header::ACCESS_CONTROL_MAX_AGE,
-                            HeaderValue::from_static("86400"),
-                        );
-                        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
-                        res
-                    },
-                )),
+            post(handle_send).options(|| async { StatusCode::NO_CONTENT }),
         )
-        .route("/api/batch", post(handle_batch))
-        .route("/v2", post(handle_v2))
-        .route("/v2/", post(handle_v2))
-        .route("/v2/namespace/{*namespace}", post(handle_v2))
+        .route(
+            "/api/batch",
+            post(handle_batch).options(|| async { StatusCode::NO_CONTENT }),
+        )
+        .route(
+            "/v2",
+            post(handle_v2).options(|| async { StatusCode::NO_CONTENT }),
+        )
+        .route(
+            "/v2/",
+            post(handle_v2).options(|| async { StatusCode::NO_CONTENT }),
+        )
+        .route(
+            "/v2/namespace/{*namespace}",
+            post(handle_v2).options(|| async { StatusCode::NO_CONTENT }),
+        )
+        .layer(axum::middleware::map_response(
+            |mut res: Response| async move {
+                let headers = res.headers_mut();
+                headers.insert(
+                    header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                    HeaderValue::from_static("*"),
+                );
+                headers.insert(
+                    header::ACCESS_CONTROL_ALLOW_HEADERS,
+                    HeaderValue::from_static("*"),
+                );
+                headers.insert(
+                    header::ACCESS_CONTROL_ALLOW_METHODS,
+                    HeaderValue::from_static("POST, OPTIONS"),
+                );
+                headers.insert(
+                    header::ACCESS_CONTROL_MAX_AGE,
+                    HeaderValue::from_static("86400"),
+                );
+                headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+                res
+            },
+        ));
+    let router = Router::new()
+        .merge(collection)
+        .route("/api/heartbeat", get(heartbeat))
         .route("/app-icon", get(handle_app_icon))
         .route("/api/auth/login", post(handle_login))
         .route(
@@ -957,6 +970,91 @@ fn node_client() -> Result<reqwest::Client, reqwest::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn browser_ingestion_cors_covers_preflight_and_rejections() {
+        let router = build_router(AppState {
+            db: None,
+            http: reqwest::Client::new(),
+            td_options: TdOptions::default(),
+            node_upstream: None,
+            static_root: PathBuf::from("."),
+            icon_cache: Arc::new(RwLock::new(HashMap::new())),
+        });
+        for path in [
+            "/api/send",
+            "/api/batch",
+            "/v2",
+            "/v2/",
+            "/v2/namespace/browser",
+            "/v2/namespace/browser/",
+        ] {
+            let valid_body = if path == "/api/send" {
+                r#"{"type":"event","payload":{"website":"11111111-1111-4111-8111-111111111111","url":"/"}}"#
+            } else {
+                "[]"
+            };
+            for (method, body, status) in [
+                ("OPTIONS", "", StatusCode::NO_CONTENT),
+                ("POST", "[", StatusCode::BAD_REQUEST),
+                ("POST", valid_body, StatusCode::SERVICE_UNAVAILABLE),
+                (
+                    "POST",
+                    &" ".repeat(2 * 1024 * 1024 + 1),
+                    StatusCode::PAYLOAD_TOO_LARGE,
+                ),
+                ("DELETE", "", StatusCode::METHOD_NOT_ALLOWED),
+            ] {
+                let response = router
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .uri(path)
+                            .method(method)
+                            .header(header::ORIGIN, "https://browser.example")
+                            .header(header::CONTENT_TYPE, "application/json")
+                            .header(header::ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                            .header(
+                                header::ACCESS_CONTROL_REQUEST_HEADERS,
+                                "content-type,x-umami-cache",
+                            )
+                            .body(Body::from(body.to_owned()))
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), status, "{method} {path}");
+                assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
+                assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_HEADERS], "*");
+                assert_eq!(
+                    response.headers()[header::ACCESS_CONTROL_ALLOW_METHODS],
+                    "POST, OPTIONS"
+                );
+                assert!(!response
+                    .headers()
+                    .contains_key(header::ACCESS_CONTROL_ALLOW_CREDENTIALS));
+                if method == "OPTIONS" {
+                    assert!(to_bytes(response.into_body(), 1024).await.unwrap().is_empty());
+                }
+            }
+        }
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/me")
+                    .header(header::ORIGIN, "https://browser.example")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert!(!response
+            .headers()
+            .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
 
     #[test]
     fn malformed_uri_returns_the_original_not_a_partially_decoded_path() {
