@@ -22,9 +22,8 @@ import { SessionProfile } from '@/app/(main)/websites/[websiteId]/sessions/Sessi
 import { SessionsPage } from '@/app/(main)/websites/[websiteId]/sessions/SessionsPage';
 import { SettingsPage } from '@/app/(main)/websites/[websiteId]/settings/SettingsPage';
 import { WebsiteLayout } from '@/app/(main)/websites/[websiteId]/WebsiteLayout';
-import { AppReportPage, PropertyHome } from './websites/[websiteId]/app-metrics/AppReportPage';
-import { isAppReport } from './websites/[websiteId]/app-metrics/sections';
 import NotFound from '@/app/not-found';
+import { SpaNavigationContext } from '@/components/hooks/useNavigation';
 import { AdminLayout } from './admin/AdminLayout';
 import { AdminTeamPage } from './admin/teams/[teamId]/AdminTeamPage';
 import { UserPage } from './admin/users/[userId]/UserPage';
@@ -37,6 +36,8 @@ import { TeamSettingsPage } from './settings/teams/[teamId]/TeamSettingsPage';
 import { WebsiteSettingsPage } from './settings/websites/[websiteId]/WebsiteSettingsPage';
 import { HeatmapsPage } from './websites/[websiteId]/(reports)/heatmaps/HeatmapsPage';
 import { PerformancePage } from './websites/[websiteId]/(reports)/performance/PerformancePage';
+import { AppReportPage, PropertyHome } from './websites/[websiteId]/app-metrics/AppReportPage';
+import { isAppReport } from './websites/[websiteId]/app-metrics/sections';
 import { ErrorIssuePage } from './websites/[websiteId]/errors/[issueId]/ErrorIssuePage';
 import { ErrorsPage } from './websites/[websiteId]/errors/ErrorsPage';
 import { GoogleAdsPage } from './websites/[websiteId]/google-ads/GoogleAdsPage';
@@ -71,6 +72,17 @@ const WEBSITE_PAGES: Record<string, ComponentType<{ websiteId: string }>> = {
 
 // Only the prerendered websites shell dispatches by URL. Next-rendered pages keep their layouts and modal slots.
 export function SpaRouteView({ children }: { children: ReactNode }) {
+  const root =
+    usePathname().match(/^\/(?:teams\/[0-9a-f-]{36}\/)?websites\/[0-9a-f-]{36}(?=\/|$)/i)?.[0] ??
+    null;
+  return (
+    <SpaNavigationContext.Provider value={root}>
+      <RouteView>{children}</RouteView>
+    </SpaNavigationContext.Provider>
+  );
+}
+
+function RouteView({ children }: { children: ReactNode }) {
   const normalizedPath = usePathname()
     .replace(/^\/teams\/[0-9a-f-]{36}(?=\/|$)/i, '')
     .replace(/\/+$/, '');

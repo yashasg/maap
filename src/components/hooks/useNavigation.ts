@@ -1,9 +1,50 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo } from 'react';
+import { createContext, startTransition, useCallback, useContext, useMemo } from 'react';
 import { buildPath } from '@/lib/url';
 
+export const SpaNavigationContext = createContext<string | null>(null);
+
+export function useNavigationRouter() {
+  const nextRouter = useRouter();
+  const root = useContext(SpaNavigationContext);
+  return useMemo(() => {
+    const localUrl = (href: string) => {
+      if (!root || typeof window === 'undefined') return null;
+      const basePath = process.env.basePath || '';
+      const url = new URL(href, window.location.href);
+      if (basePath && href.startsWith(root)) url.pathname = basePath + url.pathname;
+      const scope = basePath + root;
+      return url.origin === window.location.origin &&
+        (url.pathname === scope || url.pathname.startsWith(`${scope}/`))
+        ? url
+        : null;
+    };
+    const navigate =
+      (method: 'push' | 'replace'): typeof nextRouter.push =>
+      (href, options) => {
+        const url = localUrl(href);
+        if (!url) return nextRouter[method](href, options);
+        // Rust serves this client-dispatched shell, not Next's RSC navigation endpoint.
+        startTransition(() => window.history[`${method}State`](null, '', url));
+      };
+    return {
+      localUrl,
+      router: root
+        ? {
+            ...nextRouter,
+            push: navigate('push'),
+            replace: navigate('replace'),
+            prefetch: (...args: Parameters<typeof nextRouter.prefetch>) => {
+              if (!localUrl(args[0])) nextRouter.prefetch(...args);
+            },
+          }
+        : nextRouter,
+    };
+  }, [nextRouter, root]);
+}
+
 export function useNavigation() {
-  const router = useRouter();
+  const { router } = useNavigationRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, teamId] = pathname.match(/\/teams\/([a-f0-9-]+)/) || [];

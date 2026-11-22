@@ -39,6 +39,8 @@ Migration `31_notebook_soft_delete_cleanup` permanently removes notebooks belong
 
 Open any app or website at `/websites/<appID>` to see its Overview. All properties share the same report layout, property picker, summary header, tabs, section sidebar, and date/Test Mode controls. Websites retain their traffic, behavior, audience, growth, and monitoring reports and visitor/session metrics; native apps retain their SDK-specific reports. On a cold load, Maap waits for the property rather than briefly showing the old navigation. Existing report links remain bookmarkable, including `/websites/<appID>/events` for websites and `/websites/<appID>/app-reports/versions` for apps, and retain the date range and Test Mode when navigating.
 
+Within a property, the Rust-served shell uses browser history for report and filter changes without reloading the document. Loaded tables remain visible during refreshes; loading indicators replace content only on the initial load. Next-rendered pages retain their normal routing and modal slots.
+
 Versions uses metadata on **each event**, not the browser value saved when a session began. “Not reported” means the SDK did not send the dimension or the collector did not retain it; older events are not backfilled. Use an isolated app and an explicit allowlist to evaluate additional SDK dimensions before enabling them for users.
 
 In **Dashboards**, choose **New Dashboard**, enter a name, and choose **Create**. The saved dashboard appears in the sidebar and has a URL you can reopen. **Design dashboard** opens the component editor. **Import Dashboard** accepts version 1 Maap Board JSON, not TelemetryDeck export files.
