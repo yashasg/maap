@@ -3,12 +3,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Button, Column, Heading, Icon, Text } from '@umami/react-zen';
 import { useMemo } from 'react';
-import { PageHeader } from '@/components/common/PageHeader';
 import { useApi } from '@/components/hooks/useApi';
 import { useDateParameters } from '@/components/hooks/useDateParameters';
 import { useNavigation } from '@/components/hooks/useNavigation';
 import { AlertTriangle, RefreshCw } from '@/components/icons';
 import { CHART_COLORS } from '@/lib/constants';
+import { AcquisitionHeader, AcquisitionSkeleton } from '../ReportSkeleton';
 import styles from './Screen.module.css';
 
 export interface AcquisitionSeriesPoint {
@@ -102,14 +102,10 @@ export default function AcquisitionScreen({ websiteId }: { websiteId: string }) 
 
   return (
     <Column gap="5" minWidth="0">
-      <PageHeader
-        title="Acquisition"
-        description="See when identified app users first arrived and how those new users are distributed."
-        showBorder={false}
-      />
+      <AcquisitionHeader />
 
       {query.isLoading ? (
-        <LoadingState />
+        <AcquisitionSkeleton />
       ) : query.error ? (
         <ErrorState onRetry={() => query.refetch()} />
       ) : query.data ? (
@@ -464,16 +460,6 @@ function StateCard({ title, body }: { title: string; body: string }) {
 
 function CardEmpty() {
   return <div className={styles.cardEmpty}>No identified new users in this period.</div>;
-}
-
-function LoadingState() {
-  return (
-    <div className={styles.skeletonGrid} aria-label="Loading acquisition report">
-      {Array.from({ length: 6 }, (_, index) => (
-        <div className={styles.skeleton} key={index} />
-      ))}
-    </div>
-  );
 }
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {

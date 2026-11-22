@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest';
-import { render, screen, userEvent } from '@/test/render';
+import { render, screen, userEvent, waitFor } from '@/test/render';
 import { ListTable } from './ListTable';
 import { MetricCard } from './MetricCard';
 
@@ -49,10 +49,14 @@ test('shows final list counts and percentages with reduced motion', () => {
   expect(screen.getByText('50%')).toBeInTheDocument();
 });
 
-test('retains the animated metric path without a reduced-motion preference', () => {
+test('starts at the actual metric and animates updates without reduced motion', async () => {
   preference.reduced = false;
-  render(<MetricCard value={120} formatValue={n => `${n} visits`} />);
-  expect(screen.getByText('0 visits')).toBeInTheDocument();
+  const formatValue = (n: number) => `${Math.round(n)} visits`;
+  const { rerender } = render(<MetricCard value={120} formatValue={formatValue} />);
+  expect(screen.getByText('120 visits')).toBeInTheDocument();
+  rerender(<MetricCard value={180} formatValue={formatValue} />);
+  expect(screen.getByText('120 visits')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText('180 visits')).toBeInTheDocument());
 });
 
 test('still honors the explicit list animation opt-out', () => {

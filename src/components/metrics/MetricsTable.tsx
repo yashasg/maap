@@ -7,7 +7,7 @@ import { useMessages, useNavigation, useWebsiteMetricsQuery } from '@/components
 import { Maximize } from '@/components/icons';
 import { MetricLabel } from '@/components/metrics/MetricLabel';
 import { percentFilter } from '@/lib/filters';
-import { ListTable, type ListTableProps } from './ListTable';
+import { ListTable, type ListTableProps, ListTableSkeleton } from './ListTable';
 
 export interface MetricsTableProps extends ListTableProps {
   websiteId: string;
@@ -77,6 +77,11 @@ export function MetricsTable({
       isLoading={isLoading}
       error={error}
       minHeight="400px"
+      loadingContent={
+        <Grid padding="2">
+          <ListTableSkeleton {...props} itemCount={Math.min(limit ?? props.itemCount ?? 10, 10)} />
+        </Grid>
+      }
     >
       <Grid padding="2">
         {data && <ListTable {...props} data={filteredData} renderLabel={renderLabel} />}

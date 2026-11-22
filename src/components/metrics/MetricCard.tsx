@@ -49,8 +49,8 @@ export const MetricCard = ({
   const pct = diff !== 0 ? ((value - diff) / diff) * 100 : value !== 0 ? 100 : 0;
   const x = Number(value) || 0;
   const p = Number(pct) || 0;
-  const xSpring = useSpring(0, { stiffness: 170, damping: 26 });
-  const pctSpring = useSpring(0, { stiffness: 170, damping: 26 });
+  const xSpring = useSpring(x, { stiffness: 170, damping: 26 });
+  const pctSpring = useSpring(p, { stiffness: 170, damping: 26 });
   const valueText = useTransform(xSpring, n => formatValue(n));
   const pctText = useTransform(pctSpring, n => `${Math.abs(~~n)}%`);
 

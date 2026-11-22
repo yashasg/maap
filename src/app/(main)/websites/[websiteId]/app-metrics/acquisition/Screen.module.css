@@ -265,28 +265,8 @@
   text-align: center;
 }
 
-.skeletonGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.skeleton {
-  height: 280px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--zen-fg-muted) 12%, transparent);
-  animation: pulse 1.2s ease-in-out infinite alternate;
-}
-
-@keyframes pulse {
-  to {
-    opacity: 0.45;
-  }
-}
-
 @media (max-width: 760px) {
-  .grid,
-  .skeletonGrid {
+  .grid {
     grid-template-columns: 1fr;
   }
 
@@ -301,11 +281,5 @@
 
   .donutLayout {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skeleton {
-    animation: none;
   }
 }

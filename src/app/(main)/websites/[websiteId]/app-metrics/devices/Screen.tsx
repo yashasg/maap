@@ -6,6 +6,7 @@ import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { Panel } from '@/components/common/Panel';
 import { ListTable } from '@/components/metrics/ListTable';
 import { CHART_COLORS } from '@/lib/constants';
+import { DeviceMetricSkeleton, DevicesLayout, deviceMetrics } from '../ReportSkeleton';
 import { useDevicesReport } from './useDevicesReport';
 
 interface DevicesScreenProps {
@@ -39,73 +40,24 @@ interface DeviceMetric {
 export default function DevicesScreen({ websiteId }: DevicesScreenProps) {
   const query = useDevicesReport(websiteId);
   const report = (id: string) => query.data?.reports.find(item => item.id === id);
-  const metrics: DeviceMetric[] = [
-    {
-      title: 'Models',
-      description: 'Device model names reported on each signal.',
-      visualization: 'list',
-      rows: normalizeDeviceReport(report('models')),
-    },
-    {
-      title: 'System Versions',
-      description: 'Full operating system versions reported by the SDK.',
-      visualization: 'donut',
-      rows: normalizeDeviceReport(report('systemVersions')),
-    },
-    {
-      title: 'Types',
-      description: 'Technical hardware identifiers reported as model names.',
-      visualization: 'list',
-      rows: normalizeDeviceReport(report('types')),
-    },
-    {
-      title: 'Platforms',
-      description: 'SDK-reported platforms such as iOS, macOS, Android, or visionOS.',
-      visualization: 'donut',
-      rows: normalizeDeviceReport(report('platforms')),
-    },
-    {
-      title: 'Screen Resolution Width',
-      description: 'Reported screen width in points.',
-      visualization: 'list',
-      rows: normalizeDeviceReport(report('screenWidths'), formatPoints),
-    },
-    {
-      title: 'Screen Resolution Height',
-      description: 'Reported screen height in points.',
-      visualization: 'list',
-      rows: normalizeDeviceReport(report('screenHeights'), formatPoints),
-    },
-    {
-      title: 'Color Scheme',
-      description: 'Light or dark appearance reported for each signal.',
-      visualization: 'donut',
-      rows: normalizeDeviceReport(report('colorSchemes'), sentenceCase),
-    },
-    {
-      title: 'Orientation',
-      description: 'Device orientation reported by the SDK.',
-      visualization: 'donut',
-      rows: normalizeDeviceReport(report('orientations'), sentenceCase),
-    },
-  ];
+  const metrics: DeviceMetric[] = deviceMetrics.map(metric => ({
+    ...metric,
+    rows: normalizeDeviceReport(
+      report(metric.id),
+      ['screenWidths', 'screenHeights'].includes(metric.id)
+        ? formatPoints
+        : ['colorSchemes', 'orientations'].includes(metric.id)
+          ? sentenceCase
+          : undefined,
+    ),
+  }));
 
   return (
-    <Column gap="6">
-      <Column gap="2">
-        <Heading size="3xl">Devices</Heading>
-        <Text color="muted" style={{ maxWidth: '720px' }}>
-          Understand the hardware, operating systems, display sizes, and appearance settings
-          reported by your app.
-        </Text>
-      </Column>
-
-      <Grid columns={{ base: '1fr', xl: 'repeat(2, minmax(0, 1fr))' }} gap="3">
-        {metrics.map(metric => (
-          <DeviceMetricCard key={metric.title} metric={metric} query={query} />
-        ))}
-      </Grid>
-    </Column>
+    <DevicesLayout>
+      {metrics.map(metric => (
+        <DeviceMetricCard key={metric.title} metric={metric} query={query} />
+      ))}
+    </DevicesLayout>
   );
 }
 
@@ -142,6 +94,7 @@ function DeviceMetricCard({
         isFetching={query.isFetching}
         renderEmpty={() => <NotReported />}
         minHeight="290px"
+        loadingContent={<DeviceMetricSkeleton visualization={metric.visualization} />}
       >
         {metric.visualization === 'donut' ? (
           <Grid

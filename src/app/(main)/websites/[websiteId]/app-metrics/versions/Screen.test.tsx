@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   queries: [] as string[],
   refetch: vi.fn(),
   mode: 'data' as 'data' | 'empty' | 'error' | 'loading',
+  pendingDimension: '',
 }));
 
 vi.mock('@/components/hooks/queries/useAnalyticsQuery', () => ({
@@ -23,7 +24,7 @@ vi.mock('@/components/hooks/queries/useAnalyticsQuery', () => ({
       ],
       sdkVersion: [{ value: '1.8.0', events: 10 }],
     }[params.dimension];
-    if (mocks.mode === 'loading') {
+    if (mocks.mode === 'loading' || mocks.pendingDimension === params.dimension) {
       return {
         data: undefined,
         error: null,
@@ -60,6 +61,7 @@ beforeEach(() => {
   mocks.queries = [];
   mocks.refetch.mockClear();
   mocks.mode = 'data';
+  mocks.pendingDimension = '';
 });
 
 test('queries and renders each per-event version dimension independently', () => {
@@ -95,4 +97,18 @@ test('distinguishes empty results from a failed request', () => {
 
   expect(screen.getAllByText('Something went wrong.')).toHaveLength(3);
   expect(screen.queryByText('0 of 0 events reported a value')).not.toBeInTheDocument();
+});
+
+test('populates ready panels while another dimension still shows its skeleton', () => {
+  mocks.pendingDimension = 'sdkVersion';
+  const { container, rerender } = render(<VersionsScreen websiteId="website-1" />);
+  expect(screen.getByText('2.0')).toBeVisible();
+  expect(screen.getByText('201')).toBeVisible();
+  expect(container.querySelectorAll('[data-report-skeleton="versions"]')).toHaveLength(1);
+  expect(screen.queryByText('No version data')).not.toBeInTheDocument();
+
+  mocks.pendingDimension = '';
+  rerender(<VersionsScreen websiteId="website-1" />);
+  expect(screen.getByText('1.8.0')).toBeVisible();
+  expect(container.querySelector('[data-report-skeleton]')).toBeNull();
 });
