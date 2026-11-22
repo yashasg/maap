@@ -174,9 +174,7 @@ function ReportNav({
             ))}
           </nav>
         )}
-        <div className={styles.content} key={selectedKey}>
-          {children}
-        </div>
+        <div className={styles.content}>{children}</div>
       </div>
     </div>
   );
