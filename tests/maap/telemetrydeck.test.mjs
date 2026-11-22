@@ -49,6 +49,34 @@ test('maps navigation to a pageview with app dimensions and only selected SDK pr
   });
 });
 
+test('browser transport ignores reload-random IDs and native overrides without changing native mapping', async () => {
+  const payloads = [];
+  const send = async request => {
+    payloads.push((await request.json()).payload);
+    assert.equal(request.headers.get('user-agent'), 'Browser/1');
+    return Response.json({});
+  };
+  for (const id of ['a', 'b', 'c', 'd', 'e']) {
+    await ingestBatch(
+      request(JSON.stringify([{ ...navigation, clientUser: id.repeat(64) }]), {
+        origin: 'https://kashiworks.com',
+        'user-agent': 'Browser/1',
+      }),
+      send,
+      { hostname: 'app.ios' },
+    );
+  }
+  assert.equal(payloads.length, 5);
+  for (const payload of payloads) {
+    assert.equal(payload.hostname, 'kashiworks.com');
+    assert.equal(payload.url, '/library');
+    for (const key of ['id', 'userAgent', 'browser', 'os', 'device', 'name']) {
+      assert.equal(payload[key], undefined, key);
+    }
+  }
+  assert.equal(mapSignal(navigation).payload.id, navigation.clientUser);
+});
+
 test('keeps custom signals named, promotes floatValue, supports aliases and exact opt-ins', () => {
   const { payload } = mapSignal(
     {

@@ -9,7 +9,7 @@ WORKDIR /app/rust
 COPY package.json /app/package.json
 COPY rust/Cargo.toml rust/Cargo.lock ./
 COPY rust/src ./src
-RUN cargo test --locked && cargo build --release --locked
+RUN APP_SECRET=build-test-only cargo test --locked && cargo build --release --locked
 
 # Install dependencies only when needed
 FROM node:${NODE_IMAGE_VERSION} AS deps

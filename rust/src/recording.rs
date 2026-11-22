@@ -1,6 +1,6 @@
 use crate::{
     access::{website_pool, Access},
-    collection::{extract_client_ip, is_blocked_ip, is_bot},
+    collection::{extract_client_ip, is_allowed_collection_origin, is_blocked_ip, is_bot},
     error_response, json_response, secret_hash, with_rust_header, AppState,
 };
 use axum::{
@@ -102,6 +102,7 @@ struct CacheClaims {
 #[derive(Debug)]
 struct WebsiteRecorder {
     enabled: bool,
+    domain: Option<String>,
     config: Value,
 }
 
@@ -262,7 +263,7 @@ async fn load_recorder(
 ) -> Result<Option<WebsiteRecorder>, Response> {
     let row = sqlx::query(
         r#"
-        SELECT recorder_enabled, replay_config::text AS replay_config
+        SELECT recorder_enabled, domain, replay_config::text AS replay_config
         FROM website
         WHERE website_id = $1 AND deleted_at IS NULL
         "#,
@@ -273,6 +274,7 @@ async fn load_recorder(
     .map_err(|_| error_response(StatusCode::INTERNAL_SERVER_ERROR, "Unable to load website"))?;
     Ok(row.map(|row| WebsiteRecorder {
         enabled: row.get("recorder_enabled"),
+        domain: row.get("domain"),
         config: row
             .get::<Option<String>, _>("replay_config")
             .and_then(|value| serde_json::from_str(&value).ok())
@@ -340,6 +342,12 @@ async fn record(State(state): State<AppState>, request: Request) -> Response {
         Ok(None) => return cors_error(StatusCode::BAD_REQUEST, "Website not found."),
         Err(response) => return with_cors(response),
     };
+    if !is_allowed_collection_origin(&parts.headers, website.domain.as_deref(), None, None) {
+        return cors_error(
+            StatusCode::FORBIDDEN,
+            "Origin does not match the registered website domain.",
+        );
+    }
     if !website.enabled {
         return with_cors(json_response(json!({
             "ok": false,

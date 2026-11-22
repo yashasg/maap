@@ -12,6 +12,7 @@ import { getClientInfo, hasBlockedIp } from '@/lib/detect';
 import { createToken, parseToken } from '@/lib/jwt';
 import { fetchWebsite } from '@/lib/load';
 import { parseRequest } from '@/lib/request';
+import { ingestBatch } from '@/lib/telemetrydeck';
 import {
   createSession,
   saveEvent,
@@ -104,7 +105,13 @@ function makeComputedSessionId(
   const createdAt = new Date(timestamp * 1000);
   const sessionSalt = getSalt(process.env.SALT_ROTATION, createdAt);
 
-  return uuid(sourceId, defaultClientInfo.ip, defaultClientInfo.userAgent, sessionSalt, distinctId ?? '');
+  return uuid(
+    sourceId,
+    defaultClientInfo.ip,
+    defaultClientInfo.userAgent,
+    sessionSalt,
+    distinctId ?? '',
+  );
 }
 
 beforeEach(() => {
@@ -145,6 +152,99 @@ describe('parseRequest error handling', () => {
     await callPOST({ type: 'event', payload: { website: WEBSITE_ID, url: '/' } });
 
     expect(parseRequestMock.mock.calls[0][2]).toEqual({ skipAuth: true });
+  });
+});
+
+describe('browser collection isolation and visitor identity', () => {
+  beforeEach(() => {
+    fetchWebsiteMock.mockResolvedValue({ id: WEBSITE_ID, domain: 'kashiworks.com' } as any);
+  });
+
+  test('blocks dashboard paths, including with a valid production cache token', async () => {
+    const valid = await callPOST(
+      { type: 'event', payload: { website: WEBSITE_ID, hostname: 'kashiworks.com', url: '/' } },
+      { headers: { origin: 'https://kashiworks.com' } },
+    );
+    const { cache } = await valid.json();
+    vi.clearAllMocks();
+    for (const type of ['event', 'identify', 'performance']) {
+      for (const url of [`/console/${WEBSITE_ID}`, '/websites', '/']) {
+        const response = await callPOST(
+          { type, payload: { website: WEBSITE_ID, hostname: 'maap.kashiworks.com', url } },
+          { headers: { origin: 'https://maap.kashiworks.com', 'x-umami-cache': cache } },
+        );
+        expect(response.status).toBe(403);
+      }
+    }
+    expect(createSessionMock).not.toHaveBeenCalled();
+    expect(saveEventMock).not.toHaveBeenCalled();
+    expect(saveSessionDataMock).not.toHaveBeenCalled();
+    expect(saveSessionLinkMock).not.toHaveBeenCalled();
+  });
+
+  test('five browser reloads save five pageviews under one anonymous session, not a shared ID', async () => {
+    const sessions = new Set<string>();
+    const send = async (request: Request) => {
+      parseRequestMock.mockResolvedValue({ body: await request.json(), error: undefined });
+      const response = await POST(request);
+      const body = await response.clone().json();
+      if (response.ok) sessions.add(body.sessionId);
+      return response;
+    };
+    const signal = (clientUser: string) => ({
+      appID: WEBSITE_ID,
+      clientUser,
+      type: 'TelemetryDeck.Navigation.pathChanged',
+      payload: { 'TelemetryDeck.Navigation.destinationPath': '/products' },
+    });
+    const batch = (clientUser: string, origin = 'https://kashiworks.com') =>
+      new Request('https://collector.example/v2/', {
+        method: 'POST',
+        headers: {
+          origin,
+          'content-type': 'application/json',
+          'user-agent': defaultClientInfo.userAgent,
+        },
+        body: JSON.stringify([signal(clientUser)]),
+      });
+    for (const id of ['a', 'b', 'c', 'd', 'e']) {
+      const response = await ingestBatch(batch(id.repeat(64)), send);
+      expect(await response.json()).toEqual({ accepted: 1, rejected: 0, dropped: 0 });
+    }
+    expect(sessions.size).toBe(1);
+    expect(saveEventMock).toHaveBeenCalledTimes(5);
+    for (const [event] of saveEventMock.mock.calls) {
+      expect(event).toMatchObject({
+        eventType: EVENT_TYPE.pageView,
+        urlPath: '/products',
+        hostname: 'kashiworks.com',
+      });
+      expect(event.distinctId).toBeUndefined();
+    }
+    const anonymousSession = [...sessions][0];
+    expect(anonymousSession).toBe(makeComputedSessionId(WEBSITE_ID));
+
+    getClientInfoMock.mockResolvedValue({ ...defaultClientInfo, ip: '203.0.113.6' } as any);
+    await ingestBatch(batch('f'.repeat(64)), send);
+    expect(sessions.size).toBe(2);
+
+    const blocked = await ingestBatch(batch('a'.repeat(64), 'https://maap.kashiworks.com'), send);
+    expect(await blocked.json()).toEqual({ accepted: 0, rejected: 1, dropped: 0 });
+    expect(saveEventMock).toHaveBeenCalledTimes(6);
+
+    getClientInfoMock.mockResolvedValue(defaultClientInfo as any);
+    await ingestBatch(
+      new Request('https://collector.example/v2/', {
+        method: 'POST',
+        body: JSON.stringify([signal('a'.repeat(64)), signal('b'.repeat(64))]),
+      }),
+      send,
+    );
+    expect(sessions.size).toBe(4);
+    expect(saveEventMock.mock.calls.slice(-2).map(([event]) => event.distinctId)).toEqual([
+      'a'.repeat(50),
+      'b'.repeat(50),
+    ]);
   });
 });
 
