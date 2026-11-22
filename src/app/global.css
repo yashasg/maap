@@ -1,5 +1,5 @@
 :root {
-  --zen-font-family: 'Satoshi', system-ui, sans-serif;
+  --zen-font-family: "Satoshi", system-ui, sans-serif;
 }
 
 /* Preserve the brand accent when Zen applies its light or dark theme tokens. */
@@ -27,6 +27,11 @@ body {
 
 body {
   font-size: 0.875rem;
+}
+
+/* ponytail: static report placeholders avoid another flashing animation, including reduced motion. */
+[data-report-skeleton] [data-slot="skeleton"] {
+  animation: none;
 }
 
 html[style*="padding-right"] {

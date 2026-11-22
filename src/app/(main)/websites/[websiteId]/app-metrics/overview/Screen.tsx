@@ -9,6 +9,7 @@ import { useAppSettingsQuery } from '@/components/hooks/queries/useAppSettingsQu
 import { RefreshCw } from '@/components/icons';
 import { APP_COLOR_PALETTES, DEFAULT_APP_SETTINGS } from '@/lib/app-settings';
 import { formatLongNumber } from '@/lib/format';
+import { OverviewSkeleton } from '../ReportSkeleton';
 import styles from './Overview.module.css';
 
 interface BreakdownValue {
@@ -259,6 +260,7 @@ export default function Screen({ websiteId }: { websiteId: string }) {
           (query.isFetching && !data) || (settingsQuery.isFetching && !settingsQuery.data)
         }
         minHeight="32rem"
+        loadingContent={<OverviewSkeleton />}
       >
         {data && (
           <>

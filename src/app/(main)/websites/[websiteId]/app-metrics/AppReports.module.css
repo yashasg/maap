@@ -119,6 +119,10 @@
 .content {
   min-width: 0;
 }
+/* Base UI retains the outgoing panel until its transition completes. */
+.content [data-slot="tabs-panel"][data-ending-style] {
+  display: none;
+}
 .controls {
   display: flex;
   flex-wrap: wrap;

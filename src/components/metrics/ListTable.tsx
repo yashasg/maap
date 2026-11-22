@@ -1,4 +1,4 @@
-import { Column, Grid, Row, Text } from '@umami/react-zen';
+import { Column, Grid, Row, Skeleton, Text } from '@umami/react-zen';
 import { useSpring, useTransform } from 'motion/react';
 import { type ReactNode, useEffect } from 'react';
 import { List, type RowComponentProps } from 'react-window';
@@ -9,6 +9,45 @@ import { useReducedMotion } from '@/components/hooks/useReducedMotion';
 import { formatLongNumber } from '@/lib/format';
 
 const ITEM_SIZE = 30;
+
+export function ListTableSkeleton({
+  title,
+  metric,
+  itemCount = 10,
+  showPercentage = true,
+}: Pick<ListTableProps, 'title' | 'metric' | 'itemCount' | 'showPercentage'>) {
+  const { t, labels } = useMessages();
+  return (
+    <Column gap role="status" aria-label={t(labels.loading)} data-report-skeleton="table">
+      <Grid columns="1fr 100px" paddingLeft="2" alignItems="center" aria-hidden>
+        {title ? <Text weight="bold">{title}</Text> : <Skeleton width="40%" />}
+        {metric ? (
+          <Text weight="bold" align="center">
+            {metric}
+          </Text>
+        ) : (
+          <Skeleton />
+        )}
+      </Grid>
+      <Column gap="1" aria-hidden>
+        {Array.from({ length: itemCount }, (_, index) => (
+          <Grid
+            key={index}
+            columns={showPercentage ? '1fr 50px 50px' : '1fr 100px'}
+            height={`${ITEM_SIZE}px`}
+            paddingLeft="2"
+            alignItems="center"
+            gap
+          >
+            <Skeleton width="60%" />
+            <Skeleton width="75%" />
+            {showPercentage && <Skeleton width="75%" />}
+          </Grid>
+        ))}
+      </Column>
+    </Column>
+  );
+}
 
 interface ListData {
   label: string;
@@ -109,10 +148,19 @@ const AnimatedRow = ({
   showPercentage = true,
   formatCount,
   isPhone,
+}: {
+  label: ReactNode;
+  value?: number;
+  percent: number;
+  change: ReactNode;
+  animate: boolean;
+  showPercentage?: boolean;
+  formatCount?: (n: number) => string;
+  isPhone: boolean;
 }) => {
   const y = !Number.isNaN(value) ? value : 0;
-  const ySpring = useSpring(0, { stiffness: 170, damping: 26 });
-  const widthSpring = useSpring(0, { stiffness: 170, damping: 26 });
+  const ySpring = useSpring(y, { stiffness: 170, damping: 26 });
+  const widthSpring = useSpring(percent, { stiffness: 170, damping: 26 });
   const yText = useTransform(ySpring, n => (formatCount ? formatCount(n) : formatLongNumber(n)));
   const widthText = useTransform(widthSpring, n => `${n?.toFixed?.(0)}%`);
 

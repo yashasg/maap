@@ -54,3 +54,37 @@ test('distinguishes first load, refreshing empty results, and errors', () => {
   expect(screen.queryByText('Stale table')).not.toBeInTheDocument();
   expect(screen.getByText('Something went wrong.')).toBeVisible();
 });
+
+test('shows a content skeleton only on first load, not over retained data or error states', () => {
+  const props = {
+    loadingContent: (
+      <div role="status" aria-label="Loading rows">
+        Row placeholders
+      </div>
+    ),
+  };
+  const { rerender } = render(
+    <LoadingPanel {...props} isLoading>
+      Results
+    </LoadingPanel>,
+  );
+  expect(screen.getByRole('status', { name: 'Loading rows' })).toBeVisible();
+  expect(screen.queryByText('Results')).not.toBeInTheDocument();
+  expect(screen.getAllByRole('status')).toHaveLength(1);
+
+  rerender(
+    <LoadingPanel {...props} data={[1]} isFetching>
+      Results
+    </LoadingPanel>,
+  );
+  expect(screen.getByText('Results')).toBeVisible();
+  expect(screen.queryByText('Row placeholders')).not.toBeInTheDocument();
+
+  rerender(
+    <LoadingPanel {...props} error={new Error('Failed')}>
+      Results
+    </LoadingPanel>,
+  );
+  expect(screen.getByText('Something went wrong.')).toBeVisible();
+  expect(screen.queryByText('Row placeholders')).not.toBeInTheDocument();
+});

@@ -12,6 +12,7 @@ export interface LoadingPanelProps extends ColumnProps {
   loadingIcon?: 'dots' | 'spinner';
   loadingPlacement?: 'center' | 'absolute' | 'inline';
   renderEmpty?: () => ReactNode;
+  loadingContent?: ReactNode;
   children: ReactNode;
 }
 
@@ -24,6 +25,7 @@ export function LoadingPanel({
   loadingIcon = 'dots',
   loadingPlacement = 'absolute',
   renderEmpty = () => <Empty />,
+  loadingContent,
   children,
   ...props
 }: LoadingPanelProps): ReactNode {
@@ -36,8 +38,8 @@ export function LoadingPanel({
 
   return (
     <Column position="relative" width="100%" {...props} aria-busy={!!(loading || isFetching)}>
-      {!loading && (empty ? renderEmpty() : children)}
-      {(loading || isFetching) && (
+      {loading ? loadingContent : empty ? renderEmpty() : children}
+      {((loading && !loadingContent) || (!loading && isFetching)) && (
         <Loading icon={loadingIcon} placement={loading ? loadingPlacement : 'absolute'} />
       )}
     </Column>

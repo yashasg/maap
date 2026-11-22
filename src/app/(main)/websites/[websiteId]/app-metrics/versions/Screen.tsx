@@ -6,6 +6,7 @@ import { Panel } from '@/components/common/Panel';
 import { useAnalyticsQuery } from '@/components/hooks/queries/useAnalyticsQuery';
 import { RefreshCw } from '@/components/icons';
 import { formatLongNumber } from '@/lib/format';
+import { VersionSkeleton } from '../ReportSkeleton';
 import styles from './Versions.module.css';
 
 type Dimension = 'appVersion' | 'buildNumber' | 'sdkVersion';
@@ -44,6 +45,7 @@ function VersionPanel({ websiteId, dimension, title }: VersionPanelProps) {
         isLoading={query.isLoading}
         isFetching={query.isFetching && !data}
         minHeight="14rem"
+        loadingContent={<VersionSkeleton />}
         renderEmpty={() => (
           <Column alignItems="center" justifyContent="center" minHeight="14rem" gap="2">
             <Text weight="bold">No version data</Text>

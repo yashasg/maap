@@ -122,6 +122,20 @@ test('renders first-seen app-user reports without relabeling active users as new
   expect(screen.getByText('iOS')).toBeInTheDocument();
 });
 
+test('reserves chart and summary structure without presenting invented values while loading', () => {
+  mocks.mode = 'loading';
+  const { container, rerender } = render(<AcquisitionScreen websiteId="website-1" />);
+  expect(screen.getByRole('status', { name: 'Loading acquisition report' })).toBeVisible();
+  expect(container.querySelectorAll('[data-slot="skeleton"]')).not.toHaveLength(0);
+  expect(screen.queryByText('0%')).not.toBeInTheDocument();
+  expect(screen.queryByText('No signals in this range')).not.toBeInTheDocument();
+
+  mocks.mode = 'data';
+  rerender(<AcquisitionScreen websiteId="website-1" />);
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  expect(screen.getByText('80%')).toBeVisible();
+});
+
 test('distinguishes no signals, missing identity, and request failure', () => {
   mocks.mode = 'empty';
   const { rerender } = render(<AcquisitionScreen websiteId="website-1" />);

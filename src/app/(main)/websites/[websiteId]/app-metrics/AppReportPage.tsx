@@ -1,12 +1,12 @@
 'use client';
 import { type ComponentType, lazy, Suspense } from 'react';
 import NotFound from '@/app/not-found';
-import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { useWebsite } from '@/components/hooks';
 import { WebsitePage } from '../WebsitePage';
 import { AppReportControls } from './AppReportControls';
 import { AppReportHeader } from './AppReportHeader';
 import { AppReportNav } from './AppReportNav';
+import { ReportSkeleton } from './ReportSkeleton';
 import { isNativeApp } from './report-layout';
 import type { AppReport } from './sections';
 
@@ -53,13 +53,7 @@ export function AppReportPage({ websiteId, screen }: { websiteId: string; screen
         !['setup', 'settings'].includes(screen) && <AppReportControls websiteId={websiteId} />
       }
     >
-      <Suspense
-        fallback={
-          <LoadingPanel isLoading minHeight="400px">
-            {null}
-          </LoadingPanel>
-        }
-      >
+      <Suspense key={`${websiteId}:${screen}`} fallback={<ReportSkeleton screen={screen} />}>
         <Screen websiteId={websiteId} />
       </Suspense>
     </AppReportNav>
