@@ -262,20 +262,24 @@ test.describe('Saved reports', () => {
       expect(removeMember.status).toBe(200);
 
       // Creator identity must not override revoked website access on either route family.
+      const reportUpdate = {
+        websiteId,
+        type: 'goal',
+        name: 'hijacked',
+        parameters: { type: 'path', value: '/signup' },
+      };
+      const goalUpdate = {
+        name: 'hijacked',
+        parameters: { type: 'path', value: '/signup' },
+      };
       expect((await user.get(`/api/reports/${createdReportId}`)).status).toBe(401);
-      expect(
-        (await user.post(`/api/reports/${createdReportId}`, { name: 'hijacked' })).status,
-      ).toBe(401);
+      expect((await user.post(`/api/reports/${createdReportId}`, reportUpdate)).status).toBe(401);
       expect((await user.del(`/api/reports/${createdReportId}`)).status).toBe(401);
       expect((await user.get(`/api/websites/${websiteId}/goals/${createdReportId}`)).status).toBe(
         401,
       );
       expect(
-        (
-          await user.post(`/api/websites/${websiteId}/goals/${createdReportId}`, {
-            name: 'hijacked',
-          })
-        ).status,
+        (await user.post(`/api/websites/${websiteId}/goals/${createdReportId}`, goalUpdate)).status,
       ).toBe(401);
       expect((await user.del(`/api/websites/${websiteId}/goals/${createdReportId}`)).status).toBe(
         401,

@@ -55,6 +55,7 @@ test('creates an app dashboard from its visible trigger and reopens it after rel
     );
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     expect((await changed).status()).toBe(200);
+    await page.waitForURL(url => url.pathname === `/boards/${boardId}`);
     await page.goto(appDashboardUrl);
     await expect(page.getByRole('heading', { name: 'Events chart', exact: true })).toBeVisible();
   } finally {
