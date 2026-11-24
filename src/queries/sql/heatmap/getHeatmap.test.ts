@@ -5,7 +5,7 @@ vi.mock('@/lib/prisma', () => ({ default: {} }));
 vi.mock('@/lib/db', () => ({ CLICKHOUSE: 'clickhouse', PRISMA: 'prisma', runQuery: vi.fn() }));
 vi.mock('@/queries/prisma', () => ({ getWebsite: vi.fn() }));
 
-import { type HeatmapPoint, pickSnapshotViewport } from './getHeatmap';
+import { buildHeatmapPageUrl, type HeatmapPoint, pickSnapshotViewport } from './getHeatmap';
 
 function point(pageY: number, pageH: number, count = 1): HeatmapPoint {
   return {
@@ -37,5 +37,17 @@ describe('pickSnapshotViewport', () => {
 
   it('keeps pageH when all clicks agree', () => {
     expect(pickSnapshotViewport([point(100, 3000, 2)])?.pageH).toBe(3000);
+  });
+});
+
+describe('buildHeatmapPageUrl', () => {
+  it('keeps protocol-relative and backslash paths locked to the website origin', () => {
+    expect(buildHeatmapPageUrl('example.com', '/pricing')).toBe('https://example.com/pricing');
+    expect(buildHeatmapPageUrl('example.com', '//attacker.example/phish')).toBe(
+      'https://example.com/attacker.example/phish',
+    );
+    expect(buildHeatmapPageUrl('example.com', '/\\attacker.example/phish')).toBe(
+      'https://example.com/attacker.example/phish',
+    );
   });
 });

@@ -74,11 +74,15 @@ const schema = z.discriminatedUnion('type', [
 ]);
 
 function getUrlPath(url: string) {
+  let raw = '/';
   try {
-    return new URL(url).pathname || '/';
+    const parsed = new URL(url);
+    raw =
+      parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.pathname || '/' : '/';
   } catch {
-    return url.startsWith('/') ? url.split(/[?#]/)[0] || '/' : '/';
+    raw = url.startsWith('/') ? url.split(/[?#]/)[0] || '/' : '/';
   }
+  return `/${raw.replace(/\\/g, '/').replace(/^\/+/, '')}`;
 }
 
 async function getRequestBodySize(request: Request): Promise<number | null> {

@@ -53,6 +53,10 @@ export async function canUpdateLink({ user }: Auth, linkId: string) {
     return true;
   }
 
+  if (!(await hasPermission(user.role, PERMISSIONS.websiteUpdate))) {
+    return false;
+  }
+
   const link = await getLink(linkId);
 
   if (!link) {
@@ -83,6 +87,10 @@ export async function canDeleteLink({ user }: Auth, linkId: string) {
 
   if (user.isAdmin) {
     return true;
+  }
+
+  if (!(await hasPermission(user.role, PERMISSIONS.websiteDelete))) {
+    return false;
   }
 
   const link = await getLink(linkId);

@@ -1,6 +1,7 @@
 'use client';
 
 import { Column, Grid, Heading, Text } from '@umami/react-zen';
+import { useMemo } from 'react';
 import { PieChart } from '@/components/charts/PieChart';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { Panel } from '@/components/common/Panel';
@@ -39,18 +40,20 @@ interface DeviceMetric {
 
 export default function DevicesScreen({ websiteId }: DevicesScreenProps) {
   const query = useDevicesReport(websiteId);
-  const report = (id: string) => query.data?.reports.find(item => item.id === id);
-  const metrics: DeviceMetric[] = deviceMetrics.map(metric => ({
-    ...metric,
-    rows: normalizeDeviceReport(
-      report(metric.id),
-      ['screenWidths', 'screenHeights'].includes(metric.id)
-        ? formatPoints
-        : ['colorSchemes', 'orientations'].includes(metric.id)
-          ? sentenceCase
-          : undefined,
-    ),
-  }));
+  const metrics = useMemo<DeviceMetric[]>(() => {
+    const reports = query.data?.reports;
+    return deviceMetrics.map(metric => ({
+      ...metric,
+      rows: normalizeDeviceReport(
+        reports?.find(item => item.id === metric.id),
+        ['screenWidths', 'screenHeights'].includes(metric.id)
+          ? formatPoints
+          : ['colorSchemes', 'orientations'].includes(metric.id)
+            ? sentenceCase
+            : undefined,
+      ),
+    }));
+  }, [query.data]);
 
   return (
     <DevicesLayout>
@@ -68,21 +71,26 @@ function DeviceMetricCard({
   metric: DeviceMetric;
   query: ReturnType<typeof useDevicesReport>;
 }) {
-  const total = metric.rows.reduce((sum, row) => sum + row.count, 0);
-  const rows = metric.rows.map(row => ({
-    ...row,
-    percent: total ? (row.count / total) * 100 : 0,
-  }));
-  const chartData = {
-    labels: rows.map(row => row.label),
-    datasets: [
-      {
-        data: rows.map(row => row.count),
-        backgroundColor: CHART_COLORS,
-        borderWidth: 0,
-      },
-    ],
-  };
+  const rows = useMemo(() => {
+    const total = metric.rows.reduce((sum, row) => sum + row.count, 0);
+    return metric.rows.map(row => ({
+      ...row,
+      percent: total ? (row.count / total) * 100 : 0,
+    }));
+  }, [metric.rows]);
+  const chartData = useMemo(
+    () => ({
+      labels: rows.map(row => row.label),
+      datasets: [
+        {
+          data: rows.map(row => row.count),
+          backgroundColor: CHART_COLORS,
+          borderWidth: 0,
+        },
+      ],
+    }),
+    [rows],
+  );
 
   return (
     <Panel title={metric.title} minHeight="390px">

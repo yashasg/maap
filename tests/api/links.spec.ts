@@ -244,7 +244,12 @@ test.describe('Links', () => {
     shareId = response.body.id;
   });
 
-  test('GET /api/links/{linkId}/shares lists link shares', async ({ admin, viewer, api }) => {
+  test('GET /api/links/{linkId}/shares lists link shares', async ({
+    admin,
+    viewer,
+    api,
+    share,
+  }) => {
     const response = await admin.get(`/api/links/${linkId}/shares`);
     const paged = await admin.get(`/api/links/${linkId}/shares`, {
       params: { page: 1, pageSize: 1 },
@@ -257,11 +262,15 @@ test.describe('Links', () => {
     expect(paged.body.pageSize).toBe(1);
     expect(denied.status).toBe(401);
 
-    // The share resolves publicly to a link-typed token.
+    // The share resolves publicly to a link-typed token, but cannot enumerate link shares.
     const resolved = await api.get(`/api/share/${response.body.data[0].slug}`);
+    const shared = await (await share(response.body.data[0].slug)).get(
+      `/api/links/${linkId}/shares`,
+    );
 
     expect(resolved.status).toBe(200);
     expect(resolved.body).toMatchObject({ shareType: ENTITY_TYPE.link, linkId, websiteId: linkId });
+    expect(shared.status).toBe(401);
   });
 
   test('GET /api/links/charts returns chart data for accessible links', async ({

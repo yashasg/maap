@@ -38,29 +38,28 @@ interface AccessibilityResponse {
 }
 
 function AccessibilityCard({ title, report }: { title: string; report?: AccessibilityReport }) {
-  const chartValues =
-    report?.values
-      .map((value, index) => ({
-        ...value,
-        color: CHART_COLORS[index % CHART_COLORS.length],
-      }))
-      .filter(value => value.signals > 0) ?? [];
-  const chartData = useMemo(
-    () =>
-      chartValues.length
-        ? {
-            labels: chartValues.map(value => value.label),
-            datasets: [
-              {
-                data: chartValues.map(value => value.signals),
-                backgroundColor: chartValues.map(value => value.color),
-                borderWidth: 0,
-              },
-            ],
-          }
-        : null,
-    [chartValues],
-  );
+  const chartData = useMemo(() => {
+    const chartValues =
+      report?.values
+        .map((value, index) => ({
+          ...value,
+          color: CHART_COLORS[index % CHART_COLORS.length],
+        }))
+        .filter(value => value.signals > 0) ?? [];
+
+    return chartValues.length
+      ? {
+          labels: chartValues.map(value => value.label),
+          datasets: [
+            {
+              data: chartValues.map(value => value.signals),
+              backgroundColor: chartValues.map(value => value.color),
+              borderWidth: 0,
+            },
+          ],
+        }
+      : null;
+  }, [report]);
 
   return (
     <Panel className={styles.card} title={title}>

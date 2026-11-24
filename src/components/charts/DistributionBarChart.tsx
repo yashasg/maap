@@ -41,14 +41,16 @@ function DistributionBarChartComponent({
   labels,
   datasets,
   height = '320px',
-  backgroundColor = 'rgba(59, 130, 246, 0.75)',
-  borderColor = 'rgba(59, 130, 246, 0.95)',
+  backgroundColor,
+  borderColor,
   stacked = false,
   horizontal = true,
 }: DistributionBarChartProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const { theme } = useTheme();
   const { colors } = useMemo(() => getThemeColors(theme), [theme]);
+  const fillColor = backgroundColor ?? colors.chart.visitors.backgroundColor;
+  const strokeColor = borderColor ?? colors.chart.visitors.borderColor;
 
   const chartData = useMemo(() => {
     if (datasets?.length && labels?.length) {
@@ -70,13 +72,13 @@ function DistributionBarChartComponent({
         {
           label: '',
           data: (data || []).map(item => item.count),
-          backgroundColor,
-          borderColor,
+          backgroundColor: fillColor,
+          borderColor: strokeColor,
           borderWidth: 1,
         },
       ],
     };
-  }, [data, labels, datasets, backgroundColor, borderColor]);
+  }, [data, labels, datasets, fillColor, strokeColor]);
 
   const chartOptions = useMemo(
     () => ({

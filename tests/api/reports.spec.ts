@@ -224,6 +224,72 @@ test.describe('Saved reports', () => {
 
     reportId = '';
   });
+
+  test('revoked team member loses access to reports they created', async ({
+    admin,
+    user,
+    seed,
+  }) => {
+    const teamRes = await admin.post('/api/teams', { name: uniqueName('revoked-report-team') });
+    expect(teamRes.status).toBe(200);
+    const teamId = teamRes.body[0].id as string;
+    let websiteId = '';
+    let createdReportId = '';
+
+    try {
+      const addMember = await admin.post(`/api/teams/${teamId}/users`, {
+        userId: seed.user.id,
+        role: 'team-member',
+      });
+      expect(addMember.status).toBe(200);
+
+      const siteRes = await admin.post('/api/websites', {
+        name: uniqueName('team-report-site'),
+        domain: 'revoked-reports.example.com',
+        teamId,
+      });
+      expect(siteRes.status).toBe(200);
+      websiteId = siteRes.body.id as string;
+
+      const created = await user.post(`/api/websites/${websiteId}/goals`, {
+        name: uniqueName('member-goal'),
+        parameters: { type: 'path', value: '/signup' },
+      });
+      expect(created.status).toBe(200);
+      createdReportId = created.body.id as string;
+
+      const removeMember = await admin.del(`/api/teams/${teamId}/users/${seed.user.id}`);
+      expect(removeMember.status).toBe(200);
+
+      // Creator identity must not override revoked website access on either route family.
+      const reportUpdate = {
+        websiteId,
+        type: 'goal',
+        name: 'hijacked',
+        parameters: { type: 'path', value: '/signup' },
+      };
+      const goalUpdate = {
+        name: 'hijacked',
+        parameters: { type: 'path', value: '/signup' },
+      };
+      expect((await user.get(`/api/reports/${createdReportId}`)).status).toBe(401);
+      expect((await user.post(`/api/reports/${createdReportId}`, reportUpdate)).status).toBe(401);
+      expect((await user.del(`/api/reports/${createdReportId}`)).status).toBe(401);
+      expect((await user.get(`/api/websites/${websiteId}/goals/${createdReportId}`)).status).toBe(
+        401,
+      );
+      expect(
+        (await user.post(`/api/websites/${websiteId}/goals/${createdReportId}`, goalUpdate)).status,
+      ).toBe(401);
+      expect((await user.del(`/api/websites/${websiteId}/goals/${createdReportId}`)).status).toBe(
+        401,
+      );
+    } finally {
+      if (createdReportId) await admin.del(`/api/reports/${createdReportId}`);
+      if (websiteId) await admin.del(`/api/websites/${websiteId}`);
+      await admin.del(`/api/teams/${teamId}`);
+    }
+  });
 });
 
 test.describe('Report runs', () => {

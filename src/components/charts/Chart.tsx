@@ -5,7 +5,7 @@ import ChartJS, {
   type LegendItem,
   type UpdateMode,
 } from 'chart.js/auto';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type AnnotationMarker,
   type ChartAnnotation,
@@ -14,6 +14,8 @@ import {
 import { Legend } from '@/components/metrics/Legend';
 import { getChartBucketIndex } from '@/lib/charts';
 import { DEFAULT_ANIMATION_DURATION } from '@/lib/constants';
+
+let cachedFontFamily: string | null = null;
 
 export interface ChartProps extends BoxProps {
   type?: 'bar' | 'bubble' | 'doughnut' | 'pie' | 'line' | 'polarArea' | 'radar' | 'scatter';
@@ -43,7 +45,7 @@ function isSameMarkers(a: AnnotationMarker[], b: AnnotationMarker[]) {
   );
 }
 
-export function Chart({
+function ChartComponent({
   type,
   chartData,
   animationDuration = DEFAULT_ANIMATION_DURATION,
@@ -60,10 +62,18 @@ export function Chart({
 }: ChartProps) {
   const canvas = useRef(null);
   const chart = useRef(null);
+  const prevInputs = useRef<{
+    chartData: any;
+    options: any;
+    hiddenLabels: any;
+    annotations: any;
+  } | null>(null);
   const [legendItems, setLegendItems] = useState([]);
   const [markers, setMarkers] = useState<AnnotationMarker[]>([]);
   const annotationsRef = useRef<ChartAnnotation[]>(annotations);
   annotationsRef.current = annotations;
+  const onTooltipRef = useRef(onTooltip);
+  onTooltipRef.current = onTooltip;
 
   // Computes pixel positions for annotation markers whenever the chart lays out (update / resize)
   const annotationPlugin = useMemo(
@@ -131,12 +141,12 @@ export function Chart({
         tooltip: {
           enabled: false,
           intersect: true,
-          external: onTooltip,
+          external: (model: any) => onTooltipRef.current?.(model),
         },
       },
       ...chartOptions,
     };
-  }, [chartOptions]);
+  }, [animationDuration, chartOptions]);
 
   const handleLegendClick = (item: LegendItem) => {
     if (onLegendClick && type === 'bar') {
@@ -169,7 +179,10 @@ export function Chart({
   // Create chart
   useEffect(() => {
     if (canvas.current) {
-      ChartJS.defaults.font.family = getComputedStyle(canvas.current).fontFamily;
+      if (!cachedFontFamily) {
+        cachedFontFamily = getComputedStyle(canvas.current).fontFamily;
+      }
+      ChartJS.defaults.font.family = cachedFontFamily;
       chart.current = new ChartJS(canvas.current, {
         type,
         data: chartData,
@@ -185,13 +198,29 @@ export function Chart({
     }
 
     return () => {
+      prevInputs.current = null;
       chart.current?.destroy();
     };
   }, []);
 
-  // Update chart
+  // Update chart (skip initial mount since new ChartJS already rendered with initial props)
   useEffect(() => {
-    if (chart.current && chartData) {
+    const prev = prevInputs.current;
+    prevInputs.current = { chartData, options, hiddenLabels, annotations };
+    if (!prev || !chart.current) return;
+
+    const dataChanged =
+      prev.chartData !== chartData ||
+      prev.options !== options ||
+      prev.hiddenLabels !== hiddenLabels;
+    if (!dataChanged) {
+      if (prev.annotations?.length || annotations?.length) {
+        chart.current.update('none');
+      }
+      return;
+    }
+
+    if (chartData) {
       // Replace labels and datasets *in-place*
       chart.current.data.labels = chartData.labels;
       chart.current.data.datasets = chartData.datasets;
@@ -218,18 +247,18 @@ export function Chart({
 
       setLegendItems(chart.current.legend.legendItems);
     }
-  }, [chartData, options, updateMode, hiddenLabels]);
-
-  // Re-run layout when annotations change so marker positions are recalculated
-  useEffect(() => {
-    chart.current?.update('none');
-  }, [annotations]);
+  }, [chartData, options, updateMode, hiddenLabels, annotations]);
 
   return (
     <Column gap="6">
       <Box {...props}>
         <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
-          <canvas ref={canvas} style={{ position: 'absolute', top: 0, left: 0 }} />
+          <canvas
+            ref={canvas}
+            role="img"
+            aria-label={`${type || 'data'} chart`}
+            style={{ position: 'absolute', top: 0, left: 0 }}
+          />
           {markers.length > 0 && (
             <ChartAnnotationMarkers
               markers={markers}
@@ -259,3 +288,7 @@ export function Chart({
     </Column>
   );
 }
+
+export const Chart = memo(ChartComponent);
+
+Chart.displayName = 'Chart';

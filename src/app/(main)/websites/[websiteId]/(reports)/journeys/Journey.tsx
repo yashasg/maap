@@ -42,92 +42,125 @@ export function Journey({ websiteId, steps, startStep, endStep, view }: JourneyP
 
   useEscapeKey(() => setSelectedNode(null));
 
-  const columns = useMemo(() => {
+  const baseColumns = useMemo(() => {
     if (!data) {
       return [];
     }
 
-    const selectedPaths = selectedNode?.paths ?? [];
-    const activePaths = activeNode?.paths ?? [];
-    const columns = [];
+    const cols = [];
 
     for (let columnIndex = 0; columnIndex < +steps; columnIndex++) {
-      const nodes = {};
+      const nodes: Record<string, any> = {};
 
-      data.forEach(({ items, count }: any, nodeIndex: any) => {
-        const name = items[columnIndex];
+      data.forEach((entry: any, nodeIndex: number) => {
+        const name = entry.items[columnIndex];
+        if (!name) return;
 
-        if (name) {
-          const selected = !!selectedPaths.find(({ items }) => items[columnIndex] === name);
-          const active = selected && !!activePaths.find(({ items }) => items[columnIndex] === name);
-
-          if (!nodes[name]) {
-            const paths = data.filter(({ items }) => items[columnIndex] === name);
-
-            nodes[name] = {
-              name,
-              count,
-              totalCount: count,
-              nodeIndex,
-              columnIndex,
-              selected,
-              active,
-              paths,
-              pathMap: paths.map(({ items, count }) => ({
-                [`${columnIndex}:${items.join(':')}`]: count,
-              })),
-            };
-          } else {
-            nodes[name].totalCount += count;
-          }
+        if (!nodes[name]) {
+          nodes[name] = {
+            name,
+            count: entry.count,
+            totalCount: entry.count,
+            nodeIndex,
+            columnIndex,
+            paths: [entry],
+          };
+        } else {
+          nodes[name].totalCount += entry.count;
+          nodes[name].paths.push(entry);
         }
       });
 
-      columns.push({
+      cols.push({
         nodes: objectToArray(nodes).sort(firstBy('totalCount', -1).thenBy('name')),
       });
     }
 
-    columns.forEach((column, columnIndex) => {
-      const nodes = column.nodes.map(
-        (
-          currentNode: { totalCount: number; name: string; selected: boolean },
-          currentNodeIndex: any,
-        ) => {
-          const previousNodes = columns[columnIndex - 1]?.nodes;
-          let selectedCount = previousNodes ? 0 : currentNode.totalCount;
-          let activeCount = selectedCount;
+    return cols;
+  }, [data, steps]);
 
-          const lines =
-            previousNodes?.reduce((arr: any[][], previousNode: any, previousNodeIndex: number) => {
-              const fromCount = selectedNode?.paths.reduce((sum, path) => {
-                if (
-                  previousNode.name === path.items[columnIndex - 1] &&
-                  currentNode.name === path.items[columnIndex]
-                ) {
-                  sum += path.count;
-                }
-                return sum;
-              }, 0);
+  const columns = useMemo(() => {
+    if (!baseColumns.length) {
+      return [];
+    }
 
-              if (currentNode.selected && previousNode.selected && fromCount) {
-                arr.push([previousNodeIndex, currentNodeIndex]);
-                selectedCount += fromCount;
+    if (!selectedNode) {
+      let previousTotal = 0;
+      return baseColumns.map((column, columnIndex) => {
+        const nodes = column.nodes.map((baseNode: any) => ({
+          ...baseNode,
+          selected: false,
+          active: false,
+          selectedCount: columnIndex ? 0 : baseNode.totalCount,
+          activeCount: columnIndex ? 0 : baseNode.totalCount,
+          lines: [],
+        }));
+        const visitorCount = nodes.reduce(
+          (sum: number, { totalCount }: any) => sum + totalCount,
+          0,
+        );
+        const dropOff =
+          previousTotal > 0 ? ((visitorCount - previousTotal) / previousTotal) * 100 : 0;
+        previousTotal = visitorCount;
+        return { nodes, visitorCount, dropOff };
+      });
+    }
 
-                if (previousNode.active) {
-                  activeCount += fromCount;
-                }
+    const selectedPaths = selectedNode.paths ?? [];
+    const activePaths = activeNode?.paths ?? [];
+    const selectedByColumn = baseColumns.map(() => new Set<string>());
+    const activeByColumn = baseColumns.map(() => new Set<string>());
+    const edgeCountsByColumn = baseColumns.map(() => new Map<string, number>());
+
+    for (const p of selectedPaths) {
+      for (let col = 0; col < baseColumns.length; col++) {
+        const curr = p.items[col];
+        if (!curr) continue;
+        selectedByColumn[col].add(curr);
+        if (col > 0 && p.items[col - 1]) {
+          const key = `${p.items[col - 1]}\0${curr}`;
+          edgeCountsByColumn[col].set(key, (edgeCountsByColumn[col].get(key) ?? 0) + p.count);
+        }
+      }
+    }
+    for (const p of activePaths) {
+      for (let col = 0; col < baseColumns.length; col++) {
+        if (p.items[col]) activeByColumn[col].add(p.items[col]);
+      }
+    }
+
+    const result: any[] = [];
+
+    baseColumns.forEach((column, columnIndex) => {
+      const previousNodes = result[columnIndex - 1]?.nodes;
+      const edgeCounts = edgeCountsByColumn[columnIndex];
+
+      const nodes = column.nodes.map((baseNode: any, currentNodeIndex: number) => {
+        const selected = selectedByColumn[columnIndex].has(baseNode.name);
+        const active = selected && activeByColumn[columnIndex].has(baseNode.name);
+        let selectedCount = previousNodes ? 0 : baseNode.totalCount;
+        let activeCount = selectedCount;
+        const lines: number[][] = [];
+
+        if (previousNodes && selected) {
+          previousNodes.forEach((previousNode: any, previousNodeIndex: number) => {
+            if (!previousNode.selected) return;
+            const fromCount = edgeCounts.get(`${previousNode.name}\0${baseNode.name}`) ?? 0;
+            if (fromCount) {
+              lines.push([previousNodeIndex, currentNodeIndex]);
+              selectedCount += fromCount;
+              if (previousNode.active) {
+                activeCount += fromCount;
               }
+            }
+          });
+        }
 
-              return arr;
-            }, []) || [];
-
-          return { ...currentNode, selectedCount, activeCount, lines };
-        },
-      );
+        return { ...baseNode, selected, active, selectedCount, activeCount, lines };
+      });
 
       const visitorCount = nodes.reduce(
-        (sum: number, { selected, selectedCount, active, activeCount, totalCount }) => {
+        (sum: number, { selected, selectedCount, active, activeCount, totalCount }: any) => {
           if (!selectedNode) {
             sum += totalCount;
           } else if (!activeNode && selectedNode && selected) {
@@ -140,15 +173,15 @@ export function Journey({ websiteId, steps, startStep, endStep, view }: JourneyP
         0,
       );
 
-      const previousTotal = columns[columnIndex - 1]?.visitorCount ?? 0;
+      const previousTotal = result[columnIndex - 1]?.visitorCount ?? 0;
       const dropOff =
         previousTotal > 0 ? ((visitorCount - previousTotal) / previousTotal) * 100 : 0;
 
-      Object.assign(column, { nodes, visitorCount, dropOff });
+      result.push({ nodes, visitorCount, dropOff });
     });
 
-    return columns;
-  }, [data, selectedNode, activeNode]);
+    return result;
+  }, [baseColumns, selectedNode, activeNode]);
 
   const handleClick = (name: string, columnIndex: number, paths: any[]) => {
     if (name !== selectedNode?.name || columnIndex !== selectedNode?.columnIndex) {

@@ -57,78 +57,82 @@ function formatDate(value: string) {
 }
 
 function DailyUsersChart({ values }: { values: Array<{ x: string; y: number }> }) {
-  const width = 1000;
-  const height = 260;
-  const padding = { top: 20, right: 20, bottom: 42, left: 48 };
   const max = Math.max(1, ...values.map(value => value.y));
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
   const yTicks = Array.from(new Set([0, 0.25, 0.5, 0.75, 1].map(ratio => Math.round(max * ratio))));
   const points = values.map((value, index) => ({
     ...value,
-    px:
-      padding.left +
-      (values.length <= 1 ? chartWidth / 2 : (index / (values.length - 1)) * chartWidth),
-    py: padding.top + chartHeight - (value.y / max) * chartHeight,
+    xPct: values.length <= 1 ? 50 : (index / (values.length - 1)) * 100,
+    yPct: (value.y / max) * 100,
   }));
-  const line = points.map(({ px, py }, index) => `${index ? 'L' : 'M'} ${px} ${py}`).join(' ');
-  const area = points.length
-    ? `${line} L ${points.at(-1)?.px} ${padding.top + chartHeight} L ${points[0].px} ${padding.top + chartHeight} Z`
-    : '';
+  const line = points
+    .map(({ xPct, yPct }, index) => `${index ? 'L' : 'M'} ${xPct} ${100 - yPct}`)
+    .join(' ');
+  const area =
+    points.length > 1 ? `${line} L ${points.at(-1)?.xPct} 100 L ${points[0].xPct} 100 Z` : '';
   const labelIndexes = Array.from(
     new Set([0, Math.floor((values.length - 1) / 2), values.length - 1]),
   ).filter(index => index >= 0);
 
   return (
-    <div className={styles.chart}>
-      <svg
-        role="img"
-        aria-label="Daily active identified users"
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-      >
-        {yTicks.map(tick => {
-          const y = padding.top + chartHeight - (tick / max) * chartHeight;
-          return (
-            <g key={tick}>
-              <line
-                className={styles.gridLine}
-                x1={padding.left}
-                x2={width - padding.right}
-                y1={y}
-                y2={y}
-              />
-              <text className={styles.axisLabel} x={padding.left - 10} y={y + 4} textAnchor="end">
-                {formatLongNumber(tick)}
-              </text>
-            </g>
-          );
-        })}
-        {area && <path className={styles.area} d={area} />}
-        {line && <path className={styles.line} d={line} />}
-        {points.map(point => (
-          <circle key={point.x} className={styles.point} cx={point.px} cy={point.py} r="3">
-            <title>
-              {formatDate(point.x)}: {formatLongNumber(point.y)}
-            </title>
-          </circle>
-        ))}
-        {labelIndexes.map(index => {
-          const point = points[index];
-          if (!point) return null;
-          return (
-            <text
-              key={point.x}
-              className={styles.axisLabel}
-              x={point.px}
-              y={height - 12}
-              textAnchor={index === 0 ? 'start' : index === values.length - 1 ? 'end' : 'middle'}
+    <div className={styles.chart} role="img" aria-label="Daily active identified users">
+      <div className={styles.chartBody}>
+        <div className={styles.yAxis} aria-hidden="true">
+          {yTicks.map(tick => (
+            <span
+              key={tick}
+              className={styles.yAxisLabel}
+              style={{ bottom: `${(tick / max) * 100}%` }}
             >
-              {formatDate(point.x)}
-            </text>
-          );
-        })}
-      </svg>
+              {formatLongNumber(tick)}
+            </span>
+          ))}
+        </div>
+        <div className={styles.chartPlot}>
+          {/* ponytail: SVG stretches only area/line/gridlines; HTML renders crisp text & round dots */}
+          <svg
+            className={styles.chartSvg}
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {yTicks.map(tick => {
+              const y = 100 - (tick / max) * 100;
+              return <line key={tick} className={styles.gridLine} x1={0} x2={100} y1={y} y2={y} />;
+            })}
+            {area && <path className={styles.area} d={area} />}
+            {line && <path className={styles.line} d={line} />}
+          </svg>
+          {points.map(point => (
+            <span
+              key={point.x}
+              className={styles.point}
+              style={{ left: `${point.xPct}%`, bottom: `${point.yPct}%` }}
+              title={`${formatDate(point.x)}: ${formatLongNumber(point.y)}`}
+            />
+          ))}
+        </div>
+        <div className={styles.xAxis} aria-hidden="true">
+          {labelIndexes.map(index => {
+            const point = points[index];
+            if (!point) return null;
+            const align =
+              values.length === 1 || (index > 0 && index < values.length - 1)
+                ? styles.xLabelCenter
+                : index === 0
+                  ? styles.xLabelStart
+                  : styles.xLabelEnd;
+            return (
+              <span
+                key={point.x}
+                className={`${styles.xAxisLabel} ${align}`}
+                style={{ left: `${point.xPct}%` }}
+              >
+                {formatDate(point.x)}
+              </span>
+            );
+          })}
+        </div>
+      </div>
       {!values.some(value => value.y > 0) && (
         <div className={styles.chartEmpty}>No identified-user activity in this period</div>
       )}

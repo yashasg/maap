@@ -8,8 +8,6 @@ import { getThemeColors } from '@/lib/colors';
 import { DATE_FORMATS, DATE_FUNCTIONS, formatDate, parseBackendDate } from '@/lib/date';
 import { formatLongCurrency, formatLongNumber } from '@/lib/format';
 
-const MemoChart = memo(Chart);
-
 const dateFormats = {
   millisecond: 'T',
   second: 'pp',
@@ -70,7 +68,6 @@ function BarChartComponent({
 
   const chartOptions: any = useMemo(() => {
     return {
-      __id: Date.now(),
       ...(isClickable && {
         onClick: (event: { native?: { target?: HTMLElement } }, elements: { index: number }[]) => {
           if (elements.length) {
@@ -178,7 +175,7 @@ function BarChartComponent({
 
   return (
     <>
-      <MemoChart
+      <Chart
         {...props}
         type="bar"
         chartData={chartData}

@@ -27,7 +27,8 @@
 
 .factLabel,
 .factDetail,
-.axisLabel {
+.yAxisLabel,
+.xAxisLabel {
   color: var(--zen-fg-muted);
 }
 
@@ -70,10 +71,43 @@
   min-height: 14rem;
 }
 
-.chart svg {
+.chartBody {
+  display: grid;
+  grid-template-columns: minmax(2rem, auto) minmax(0, 1fr);
+  column-gap: 0.75rem;
+  row-gap: 0.625rem;
+  padding: 0.75rem 0.5rem 0.25rem 0;
+}
+
+.yAxis {
+  position: relative;
+  height: 11.5rem;
+}
+
+.yAxisLabel,
+.xAxisLabel {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.yAxisLabel {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+}
+
+.chartPlot {
+  position: relative;
+  height: 11.5rem;
+  overflow: visible;
+}
+
+.chartSvg {
   display: block;
   width: 100%;
-  height: 14rem;
+  height: 100%;
   overflow: visible;
 }
 
@@ -81,12 +115,6 @@
   stroke: var(--zen-border);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
-}
-
-.axisLabel {
-  fill: var(--zen-fg-muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
 }
 
 .area {
@@ -103,10 +131,37 @@
 }
 
 .point {
-  fill: var(--zen-surface);
-  stroke: var(--overview-accent);
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--overview-accent);
+  border-radius: 999px;
+  background: var(--zen-surface);
+  transform: translate(-50%, 50%);
+  box-sizing: border-box;
+}
+
+.xAxis {
+  position: relative;
+  grid-column: 2;
+  height: 1rem;
+}
+
+.xAxisLabel {
+  position: absolute;
+  top: 0;
+}
+
+.xLabelStart {
+  transform: translateX(0);
+}
+
+.xLabelCenter {
+  transform: translateX(-50%);
+}
+
+.xLabelEnd {
+  transform: translateX(-100%);
 }
 
 .chartEmpty,

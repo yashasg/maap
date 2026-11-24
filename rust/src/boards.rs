@@ -396,6 +396,9 @@ async fn board_access_allowed(
     if user.is_admin() {
         return Ok(true);
     }
+    if !matches!(access, BoardAccess::Read) && user.role != "user" {
+        return Ok(false);
+    }
     if board.user_id.is_some() {
         return Ok(board.user_id == Some(user.id));
     }
@@ -1354,14 +1357,11 @@ async fn list_board_shares(
         Ok(pool) => pool,
         Err(response) => return response,
     };
-    let (user, shared) = match read_credentials(pool, &headers, board_id).await {
-        Ok(credentials) => credentials,
+    let user = match authenticate(pool, &headers).await {
+        Ok(user) => user,
         Err(response) => return response,
     };
-    if !shared && !user.as_ref().is_some_and(UserAuth::is_admin) {
-        let Some(user) = user.as_ref() else {
-            return unauthorized();
-        };
+    if !user.is_admin() {
         let board = match load_board(pool, board_id).await {
             Ok(Some(board)) => board,
             Ok(None) => return unauthorized(),
@@ -1372,7 +1372,7 @@ async fn list_board_shares(
                 )
             }
         };
-        match board_access_allowed(pool, user, &board, BoardAccess::Read).await {
+        match board_access_allowed(pool, &user, &board, BoardAccess::Read).await {
             Ok(true) => {}
             Ok(false) => return unauthorized(),
             Err(error) => {

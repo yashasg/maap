@@ -608,7 +608,7 @@ function getWebsiteOrigin(domain?: string | null) {
   return new URL(`${protocol}://${host}`);
 }
 
-function buildHeatmapPageUrl(domain: string | null | undefined, urlPath: string) {
+export function buildHeatmapPageUrl(domain: string | null | undefined, urlPath: string) {
   try {
     const origin = getWebsiteOrigin(domain);
 
@@ -616,7 +616,14 @@ function buildHeatmapPageUrl(domain: string | null | undefined, urlPath: string)
       return null;
     }
 
-    return new URL(urlPath || '/', origin).toString();
+    const normalized = `/${(urlPath || '/').replace(/\\/g, '/').replace(/^\/+/, '')}`;
+    const resolved = new URL(normalized, origin);
+
+    if (resolved.origin !== origin.origin) {
+      return null;
+    }
+
+    return resolved.toString();
   } catch {
     return null;
   }

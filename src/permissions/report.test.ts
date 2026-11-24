@@ -1,19 +1,12 @@
 import { expect, test, vi } from 'vitest';
 import { ENTITY_TYPE } from '@/lib/constants';
-import { canViewReport, getReportSection } from './report';
-import { canViewWebsite } from './website';
+import { canDeleteReport, canUpdateReport, canViewReport, getReportSection } from './report';
+import { canDeleteWebsite, canUpdateWebsite, canViewWebsite } from './website';
 
 vi.mock('./website', () => ({
+  canDeleteWebsite: vi.fn(),
+  canUpdateWebsite: vi.fn(),
   canViewWebsite: vi.fn(),
-}));
-
-vi.mock('@/lib/load', () => ({
-  getBillingAccess: vi.fn(),
-  getWebsiteBillingScope: vi.fn(),
-}));
-
-vi.mock('@/queries/prisma', () => ({
-  getWebsite: vi.fn(),
 }));
 
 test('getReportSection maps saved report types to share sections', () => {
@@ -131,4 +124,24 @@ test('canViewReport falls back to website access for authenticated users', async
       } as any,
     ),
   ).resolves.toBe(true);
+});
+
+test('revoked report creator loses view, update, and delete access without website access', async () => {
+  vi.mocked(canViewWebsite).mockResolvedValue(false);
+  vi.mocked(canUpdateWebsite).mockResolvedValue(false);
+  vi.mocked(canDeleteWebsite).mockResolvedValue(false);
+
+  const auth = {
+    user: { id: 'creator-1', username: 'creator', role: 'user', isAdmin: false },
+  };
+  const report = {
+    id: 'report-1',
+    userId: 'creator-1',
+    websiteId: 'website-1',
+    type: 'goal',
+  } as any;
+
+  await expect(canViewReport(auth, report)).resolves.toBe(false);
+  await expect(canUpdateReport(auth, report)).resolves.toBe(false);
+  await expect(canDeleteReport(auth, report)).resolves.toBe(false);
 });

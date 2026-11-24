@@ -652,19 +652,19 @@ fn finite_i32(value: Option<f64>) -> Result<Option<i32>, Response> {
 }
 
 fn url_path(value: &str) -> String {
-    if let Ok(url) = Url::parse(value) {
-        let path = url.path();
-        return if path.is_empty() { "/" } else { path }.to_string();
-    }
-    if value.starts_with('/') {
-        return value
-            .split(['?', '#'])
-            .next()
-            .filter(|path| !path.is_empty())
-            .unwrap_or("/")
-            .to_string();
-    }
-    "/".to_string()
+    let raw = if let Ok(url) = Url::parse(value) {
+        if matches!(url.scheme(), "http" | "https") {
+            url.path().to_string()
+        } else {
+            return "/".to_string();
+        }
+    } else if value.starts_with('/') {
+        value.split(['?', '#']).next().unwrap_or("/").to_string()
+    } else {
+        return "/".to_string();
+    };
+    let normalized = raw.replace('\\', "/");
+    format!("/{}", normalized.trim_start_matches('/'))
 }
 
 fn event_timestamp(event: &Value) -> Option<f64> {
@@ -1587,5 +1587,23 @@ mod tests {
         headers.insert("x-umami-cache", token.parse().unwrap());
         assert!(parse_cache_with_secret(&headers, website_id, secret).is_some());
         assert!(parse_cache_with_secret(&headers, Uuid::new_v4(), secret).is_none());
+    }
+
+    #[test]
+    fn url_path_strips_protocol_relative_and_non_http_schemes() {
+        assert_eq!(url_path("https://example.com/pricing?a=1"), "/pricing");
+        assert_eq!(
+            url_path("//attacker.example/phish"),
+            "/attacker.example/phish"
+        );
+        assert_eq!(
+            url_path("/\\attacker.example/phish"),
+            "/attacker.example/phish"
+        );
+        assert_eq!(
+            url_path("https://example.com//attacker.example"),
+            "/attacker.example"
+        );
+        assert_eq!(url_path("javascript:alert(1)"), "/");
     }
 }
