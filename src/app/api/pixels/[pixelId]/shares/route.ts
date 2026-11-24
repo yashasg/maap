@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ pixe
   const { pixelId } = await params;
   const { page, pageSize, search } = query;
 
-  if (!(await canViewPixel(auth, pixelId))) {
+  if (!auth.user || !(await canViewPixel({ user: auth.user }, pixelId))) {
     return unauthorized();
   }
 

@@ -273,30 +273,42 @@ function SeriesCard({
   values: ('activeUsers' | 'newUsers')[];
 }) {
   const max = Math.max(0, ...points.flatMap(point => values.map(value => point[value])));
+  const yMax = Math.max(1, max);
+  const yTicks = max > 1 ? [max, Math.round(max / 2), 0] : [yMax, 0];
 
   return (
     <ChartCard title={title} subtitle={subtitle}>
       {points.length ? (
-        <div className={styles.series} role="img" aria-label={`${title} chart`}>
-          {points.map(point => (
-            <div className={styles.seriesColumn} key={point.bucket}>
-              <div className={styles.barGroup}>
-                {values.map(value => (
-                  <div
-                    className={value === 'newUsers' ? styles.newBar : styles.activeBar}
-                    key={value}
-                    style={{
-                      height: `${max ? Math.max(3, (point[value] / max) * 100) : 3}%`,
-                    }}
-                    title={`${formatBucket(point.bucket)} · ${
-                      value === 'newUsers' ? 'New' : 'Active'
-                    }: ${number.format(point[value])}`}
-                  />
-                ))}
+        <div className={styles.seriesFrame} role="img" aria-label={`${title} chart`}>
+          <div className={styles.seriesAxis} aria-hidden="true">
+            {yTicks.map(tick => (
+              <span key={tick}>{number.format(tick)}</span>
+            ))}
+          </div>
+          <div className={styles.series}>
+            {points.map(point => (
+              <div className={styles.seriesColumn} key={point.bucket}>
+                <div className={styles.barGroup}>
+                  {values.map(value => {
+                    const count = point[value];
+                    return (
+                      <div
+                        className={value === 'newUsers' ? styles.newBar : styles.activeBar}
+                        key={value}
+                        style={{
+                          height: count > 0 ? `${Math.max(3, (count / yMax) * 100)}%` : '0%',
+                        }}
+                        title={`${formatBucket(point.bucket)} · ${
+                          value === 'newUsers' ? 'New' : 'Active'
+                        }: ${number.format(count)}`}
+                      />
+                    );
+                  })}
+                </div>
+                <span>{formatBucket(point.bucket)}</span>
               </div>
-              <span>{formatBucket(point.bucket)}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
         <CardEmpty />
@@ -322,23 +334,35 @@ function CountSeriesCard({
     [points],
   );
   const max = Math.max(0, ...sorted.map(point => point.users));
+  const yMax = Math.max(1, max);
+  const yTicks = max > 1 ? [max, Math.round(max / 2), 0] : [yMax, 0];
 
   return (
     <ChartCard title={title} subtitle={subtitle}>
       {sorted.length ? (
-        <div className={styles.series} role="img" aria-label={`${title} chart`}>
-          {sorted.map(point => (
-            <div className={styles.seriesColumn} key={point.bucket}>
-              <div className={styles.barGroup}>
-                <div
-                  className={styles.newBar}
-                  style={{ height: `${max ? Math.max(3, (point.users / max) * 100) : 3}%` }}
-                  title={`${labels(point.bucket)}: ${number.format(point.users)}`}
-                />
+        <div className={styles.seriesFrame} role="img" aria-label={`${title} chart`}>
+          <div className={styles.seriesAxis} aria-hidden="true">
+            {yTicks.map(tick => (
+              <span key={tick}>{number.format(tick)}</span>
+            ))}
+          </div>
+          <div className={styles.series}>
+            {sorted.map(point => (
+              <div className={styles.seriesColumn} key={point.bucket}>
+                <div className={styles.barGroup}>
+                  <div
+                    className={styles.newBar}
+                    style={{
+                      height:
+                        point.users > 0 ? `${Math.max(3, (point.users / yMax) * 100)}%` : '0%',
+                    }}
+                    title={`${labels(point.bucket)}: ${number.format(point.users)}`}
+                  />
+                </div>
+                <span>{labels(point.bucket)}</span>
               </div>
-              <span>{labels(point.bucket)}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
         <CardEmpty />

@@ -75,3 +75,26 @@ test('sorts nodes in each step column by total visitor count descending with alp
     '/thank-you', // 4
   ]);
 });
+
+test('selecting and hovering a node highlights flow counts without reordering columns', async () => {
+  const { container, user } = render(
+    <Journey
+      websiteId="website-1"
+      steps={2}
+      startDate={new Date('2026-07-01T00:00:00.000Z')}
+      endDate={new Date('2026-07-31T23:59:59.999Z')}
+      view="views"
+    />,
+  );
+
+  const rootNode = container.querySelector('[title="/"]') as HTMLElement;
+  await user.click(rootNode);
+  await user.hover(rootNode);
+
+  const step2Nodes = Array.from(
+    container.querySelectorAll('[class*="column"]')[1]?.querySelectorAll('[class*="name"]') || [],
+  ).map(el => el.getAttribute('title'));
+
+  expect(step2Nodes).toEqual(['/pricing', '/team', '/next', '/thank-you']);
+  expect(container.querySelector('[title="100"]')).toBeInTheDocument();
+});

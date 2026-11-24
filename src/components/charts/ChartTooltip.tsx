@@ -17,21 +17,21 @@ export function ChartTooltip({
         padding="4"
         borderRadius="md"
         style={{
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          borderRadius: '5.25px',
-          color: 'white',
-          gap: '10.5px',
-          padding: '14px',
+          backgroundColor: 'var(--zen-surface-inverted, rgba(0, 0, 0, 0.85))',
+          borderRadius: 'var(--zen-radius-md, 6px)',
+          color: 'var(--zen-fg-inverted, #ffffff)',
+          gap: '0.625rem',
+          padding: '0.75rem 0.875rem',
         }}
       >
         {title && (
-          <Text size="sm" style={{ fontSize: '12.25px', lineHeight: '17.5px' }}>
+          <Text size="sm" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
             {title}
           </Text>
         )}
         <Row alignItems="center">
           <StatusLight color={color}>
-            <Text size="sm" style={{ fontSize: '12.25px', lineHeight: '17.5px' }}>
+            <Text size="sm" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
               {value}
             </Text>
           </StatusLight>

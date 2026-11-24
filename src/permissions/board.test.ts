@@ -1,7 +1,9 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { BOARD_TYPES } from '@/lib/boards';
-import { getReport } from '@/queries/prisma';
+import { getBoard, getReport, getTeamUser } from '@/queries/prisma';
 import {
+  canDeleteBoard,
+  canUpdateBoard,
   canViewBoardEntities,
   hasValidBoardReports,
   stripInvalidBoardReports,
@@ -202,6 +204,17 @@ test('hasValidBoardReports rejects report widgets without a website context', as
       ],
     }),
   ).resolves.toBe(false);
+});
+
+test('canUpdateBoard and canDeleteBoard deny globally view-only users', async () => {
+  vi.mocked(getBoard).mockResolvedValue({ id: 'board-1', teamId: 'team-1' } as any);
+  vi.mocked(getTeamUser).mockResolvedValue({ role: 'team-member' } as any);
+  const viewOnlyAuth = {
+    user: { id: 'viewer-1', username: 'viewer', role: 'view-only', isAdmin: false },
+  };
+
+  await expect(canUpdateBoard(viewOnlyAuth, 'board-1')).resolves.toBe(false);
+  await expect(canDeleteBoard(viewOnlyAuth, 'board-1')).resolves.toBe(false);
 });
 
 test('stripInvalidBoardReports removes only invalid report IDs', async () => {

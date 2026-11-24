@@ -95,3 +95,18 @@ test('shades cells relative to the best retention shown, not a fixed scale', () 
   // sqrt(9.02 / 15) * 60
   expect(background('9.02%')).toContain('var(--zen-primary) 47%');
 });
+
+test('exposes table semantics for cohort headers and cells', () => {
+  render(
+    <Retention
+      websiteId="website-1"
+      startDate={new Date(2026, 9, 1)}
+      endDate={new Date(2026, 9, 31)}
+    />,
+  );
+
+  expect(screen.getByRole('table', { name: 'Cohort' })).toBeInTheDocument();
+  expect(screen.getAllByRole('columnheader').length).toBeGreaterThan(1);
+  expect(screen.getAllByRole('rowheader')).toHaveLength(3);
+  expect(screen.getAllByRole('cell').length).toBeGreaterThan(0);
+});

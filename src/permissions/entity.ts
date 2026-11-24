@@ -46,6 +46,10 @@ export async function canUpdateEntity({ user }: Auth, entityId: string) {
     return true;
   }
 
+  if (!(await hasPermission(user.role, PERMISSIONS.websiteUpdate))) {
+    return false;
+  }
+
   const entity = await getEntity(entityId);
 
   if (!entity) {
@@ -76,6 +80,10 @@ export async function canDeleteEntity({ user }: Auth, entityId: string) {
 
   if (user.isAdmin) {
     return true;
+  }
+
+  if (!(await hasPermission(user.role, PERMISSIONS.websiteDelete))) {
+    return false;
   }
 
   const entity = await getEntity(entityId);

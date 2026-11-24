@@ -81,6 +81,48 @@ test.describe('Teams', () => {
     expect(unknown.body.error.code).toBe('team-not-found');
   });
 
+  test('global view-only team member cannot mutate team websites, boards, or shares', async ({
+    admin,
+    viewer,
+  }) => {
+    const boardRes = await admin.post('/api/boards', {
+      type: 'mixed',
+      name: uniqueName('team-board'),
+      teamId,
+      parameters: {},
+    });
+    expect(boardRes.status).toBe(200);
+    const teamBoardId = boardRes.body.id as string;
+
+    try {
+      expect(
+        (
+          await viewer.post('/api/websites', {
+            name: uniqueName('blocked-site'),
+            domain: uniqueDomain(),
+            teamId,
+          })
+        ).status,
+      ).toBe(401);
+      expect(
+        (
+          await viewer.post('/api/share', {
+            entityId: teamBoardId,
+            shareType: 4,
+            name: 'blocked-share',
+            parameters: {},
+          })
+        ).status,
+      ).toBe(401);
+      expect((await viewer.post(`/api/boards/${teamBoardId}`, { name: 'hijacked' })).status).toBe(
+        401,
+      );
+      expect((await viewer.del(`/api/boards/${teamBoardId}`)).status).toBe(401);
+    } finally {
+      await admin.del(`/api/boards/${teamBoardId}`);
+    }
+  });
+
   test('GET /api/teams/{teamId}/users lists the members', async ({ admin, viewer, user }) => {
     const response = await admin.get(`/api/teams/${teamId}/users`);
     const member = await viewer.get(`/api/teams/${teamId}/users`);

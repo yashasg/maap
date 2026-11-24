@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ link
   const { linkId } = await params;
   const { page, pageSize, search } = query;
 
-  if (!(await canViewLink(auth, linkId))) {
+  if (!auth.user || !(await canViewLink({ user: auth.user }, linkId))) {
     return unauthorized();
   }
 

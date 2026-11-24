@@ -786,6 +786,36 @@ async fn fallback_proxy(State(state): State<AppState>, req: Request) -> Response
     }
 }
 
+fn url_origin(raw: &str) -> Option<String> {
+    let parsed = Url::parse(raw).ok()?;
+    let origin = parsed.origin();
+    origin.is_tuple().then(|| origin.ascii_serialization())
+}
+
+fn build_csp() -> String {
+    let live = if env::var("NODE_ENV").ok().as_deref() == Some("development") {
+        " http://localhost:8400"
+    } else {
+        ""
+    };
+    let mut connect_src = vec!["'self'".to_string(), "https:".to_string()];
+    if let Some(origin) = env::var("API_URL").ok().and_then(|v| url_origin(&v)) {
+        connect_src.push(origin);
+    }
+    let mut frame_ancestors = vec!["'self'".to_string()];
+    if let Ok(urls) = env::var("ALLOWED_FRAME_URLS") {
+        let trimmed = urls.trim();
+        if !trimmed.is_empty() {
+            frame_ancestors.push(trimmed.to_string());
+        }
+    }
+    format!(
+        "default-src 'self'; img-src 'self' https: data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline'{live}; style-src 'self' 'unsafe-inline'; connect-src {}{live}; frame-src 'self' http: https:; frame-ancestors {};",
+        connect_src.join(" "),
+        frame_ancestors.join(" "),
+    )
+}
+
 pub fn build_router(state: AppState) -> Router {
     let collection = Router::new()
         .route(
@@ -876,6 +906,8 @@ pub fn build_router(state: AppState) -> Router {
     let api: Router = router.with_state(state.clone());
     let mcp_api = api.clone();
     let mcp_state = state.clone();
+    let csp = HeaderValue::from_str(&build_csp()).ok();
+    let force_ssl = env::var("FORCE_SSL").ok().is_some_and(|v| !v.is_empty());
     api.route(
         "/mcp",
         any(move |req: Request| {
@@ -885,6 +917,31 @@ pub fn build_router(state: AppState) -> Router {
         }),
     )
     .fallback(any(fallback_proxy).with_state(state))
+    .layer(axum::middleware::map_response(move |mut res: Response| {
+        let csp = csp.clone();
+        async move {
+            let headers = res.headers_mut();
+            if let Some(csp) = csp {
+                headers
+                    .entry(header::CONTENT_SECURITY_POLICY)
+                    .or_insert(csp);
+            }
+            headers
+                .entry(header::X_CONTENT_TYPE_OPTIONS)
+                .or_insert_with(|| HeaderValue::from_static("nosniff"));
+            headers
+                .entry(header::REFERRER_POLICY)
+                .or_insert_with(|| HeaderValue::from_static("strict-origin-when-cross-origin"));
+            if force_ssl {
+                headers
+                    .entry(header::STRICT_TRANSPORT_SECURITY)
+                    .or_insert_with(|| {
+                        HeaderValue::from_static("max-age=63072000; includeSubDomains; preload")
+                    });
+            }
+            res
+        }
+    }))
 }
 
 #[tokio::main]
@@ -1061,6 +1118,40 @@ mod tests {
         for path in ["/My%20App/%zz", "/My%20App/%C3", "/My%20App/%"] {
             assert_eq!(decode_uri(path, true), path);
         }
+    }
+
+    #[tokio::test]
+    async fn router_attaches_csp_and_security_headers() {
+        let router = build_router(AppState {
+            db: None,
+            http: reqwest::Client::new(),
+            td_options: TdOptions::default(),
+            node_upstream: None,
+            static_root: PathBuf::from("."),
+            icon_cache: Arc::new(RwLock::new(HashMap::new())),
+        });
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/heartbeat")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let csp = response.headers()[header::CONTENT_SECURITY_POLICY]
+            .to_str()
+            .unwrap();
+        assert!(csp.contains("default-src 'self'"));
+        assert!(csp.contains("frame-ancestors 'self'"));
+        assert_eq!(
+            response.headers()[header::X_CONTENT_TYPE_OPTIONS],
+            "nosniff"
+        );
+        assert_eq!(
+            response.headers()[header::REFERRER_POLICY],
+            "strict-origin-when-cross-origin"
+        );
     }
 
     #[test]

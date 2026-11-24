@@ -28,7 +28,6 @@ export function PageviewsChart({ data, unit, minDate, maxDate, ...props }: Pagev
     if (!data) return;
 
     return {
-      __id: Date.now(),
       datasets: [
         {
           type: 'bar',
@@ -80,7 +79,7 @@ export function PageviewsChart({ data, unit, minDate, maxDate, ...props }: Pagev
           : []),
       ],
     };
-  }, [data, locale]);
+  }, [data, locale, dateLocale, colors, minDate, maxDate, unit, t, labels]);
 
   const renderXLabel = useCallback(renderDateLabels(unit, locale), [unit, locale]);
 

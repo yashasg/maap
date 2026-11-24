@@ -162,3 +162,16 @@ test('offers a retry after an acquisition request fails', async () => {
 
   expect(mocks.refetch).toHaveBeenCalledOnce();
 });
+
+test('renders Y-axis scale ticks and keeps zero-count bars at 0% height', () => {
+  render(<AcquisitionScreen websiteId="website-1" />);
+
+  const zeroBars = screen.getAllByTitle(/New: 0$/);
+  const nonZeroBars = screen.getAllByTitle(/New: 1$/);
+
+  expect(zeroBars.length).toBeGreaterThan(0);
+  expect(zeroBars[0].style.height).toBe('0%');
+  expect(nonZeroBars[0].style.height).toBe('100%');
+  expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('2').length).toBeGreaterThan(0);
+});

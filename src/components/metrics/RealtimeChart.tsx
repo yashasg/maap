@@ -13,8 +13,16 @@ export interface RealtimeChartProps {
 
 export function RealtimeChart({ data, unit, ...props }: RealtimeChartProps) {
   const { formatSeriesTimezone, fromUtc, timezone } = useTimezone();
-  const endDate = startOfMinute(new Date());
-  const startDate = subMinutes(endDate, REALTIME_RANGE);
+  const minuteBucket = Math.floor(Date.now() / 60_000);
+  const { endDate, minDate, maxDate } = useMemo(() => {
+    const end = startOfMinute(new Date(minuteBucket * 60_000));
+    const start = subMinutes(end, REALTIME_RANGE);
+    return {
+      endDate: end,
+      minDate: fromUtc(start),
+      maxDate: fromUtc(end),
+    };
+  }, [minuteBucket, fromUtc]);
   const prevEndDate = useRef(endDate);
   const prevData = useRef<string | null>(null);
 
@@ -27,7 +35,7 @@ export function RealtimeChart({ data, unit, ...props }: RealtimeChartProps) {
       pageviews: formatSeriesTimezone(data.series.views, 'x', timezone),
       sessions: formatSeriesTimezone(data.series.visitors, 'x', timezone),
     };
-  }, [data, startDate, endDate, unit]);
+  }, [data, formatSeriesTimezone, timezone]);
 
   const animationDuration = useMemo(() => {
     // Don't animate the bars shifting over because it looks weird
@@ -49,8 +57,8 @@ export function RealtimeChart({ data, unit, ...props }: RealtimeChartProps) {
   return (
     <PageviewsChart
       {...props}
-      minDate={fromUtc(startDate)}
-      maxDate={fromUtc(endDate)}
+      minDate={minDate}
+      maxDate={maxDate}
       unit={unit}
       data={chartData}
       animationDuration={animationDuration}

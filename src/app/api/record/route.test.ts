@@ -4,6 +4,7 @@ import { parseToken } from '@/lib/jwt';
 import { parseRequest } from '@/lib/request';
 import { getWebsite } from '@/queries/prisma';
 import { saveRecording } from '@/queries/sql';
+import { saveHeatmapEvents } from '@/queries/sql/heatmap/saveHeatmapEvents';
 import { OPTIONS, POST } from './route';
 
 vi.hoisted(() => {
@@ -185,5 +186,43 @@ describe('record route cache token binding', () => {
     const response = await post(websiteId, { origin: 'https://maap.kashiworks.com' });
     expect(response.status).toBe(403);
     expect(saveRecording).not.toHaveBeenCalled();
+  });
+
+  test('normalizes protocol-relative, backslash, and non-http heatmap paths', async () => {
+    vi.mocked(getWebsite).mockResolvedValue({
+      id: websiteId,
+      domain: 'kashiworks.com',
+      recorderEnabled: true,
+      replayConfig: { heatmapEnabled: true },
+    } as any);
+    vi.mocked(parseToken).mockResolvedValue({ type: 'cache', websiteId, sessionId, visitId });
+    parseRequestMock.mockResolvedValue({
+      body: {
+        type: 'heatmap',
+        payload: {
+          website: websiteId,
+          events: [
+            { type: 'click', url: '//attacker.example/phish', x: 10, y: 10 },
+            { type: 'click', url: '/\\attacker.example/phish', x: 10, y: 10 },
+            { type: 'click', url: 'javascript:alert(1)', x: 10, y: 10 },
+          ],
+        },
+      },
+      error: undefined,
+    } as any);
+
+    const response = await POST(
+      new Request('http://localhost/api/record', {
+        method: 'POST',
+        headers: { 'x-umami-cache': 'token' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(saveHeatmapEvents).toHaveBeenCalledWith([
+      expect.objectContaining({ urlPath: '/attacker.example/phish' }),
+      expect.objectContaining({ urlPath: '/attacker.example/phish' }),
+      expect.objectContaining({ urlPath: '/' }),
+    ]);
   });
 });

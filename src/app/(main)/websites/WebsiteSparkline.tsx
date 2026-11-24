@@ -29,11 +29,15 @@ export function WebsiteSparkline({
     const min = Math.min(...values, 0);
     const range = max - min || 1;
 
+    if (values.length === 1) {
+      const y = height - padding - ((values[0] - min) / range) * Math.max(height - padding * 2, 1);
+      return `0,${y} ${width},${y}`;
+    }
+
     return values
       .map((value, index) => {
-        const x = values.length === 1 ? width / 2 : (index / (values.length - 1)) * width;
-        const y =
-          height - padding - ((value - min) / range) * Math.max(height - padding * 2, 1);
+        const x = (index / (values.length - 1)) * width;
+        const y = height - padding - ((value - min) / range) * Math.max(height - padding * 2, 1);
 
         return `${x},${y}`;
       })
@@ -72,6 +76,7 @@ export function WebsiteSparkline({
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
         />
       </svg>
     </div>

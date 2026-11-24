@@ -70,7 +70,6 @@ function BarChartComponent({
 
   const chartOptions: any = useMemo(() => {
     return {
-      __id: Date.now(),
       ...(isClickable && {
         onClick: (event: { native?: { target?: HTMLElement } }, elements: { index: number }[]) => {
           if (elements.length) {

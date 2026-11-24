@@ -42,92 +42,110 @@ export function Journey({ websiteId, steps, startStep, endStep, view }: JourneyP
 
   useEscapeKey(() => setSelectedNode(null));
 
-  const columns = useMemo(() => {
+  const baseColumns = useMemo(() => {
     if (!data) {
+      return [];
+    }
+
+    const cols = [];
+
+    for (let columnIndex = 0; columnIndex < +steps; columnIndex++) {
+      const nodes: Record<string, any> = {};
+
+      data.forEach((entry: any, nodeIndex: number) => {
+        const name = entry.items[columnIndex];
+        if (!name) return;
+
+        if (!nodes[name]) {
+          nodes[name] = {
+            name,
+            count: entry.count,
+            totalCount: entry.count,
+            nodeIndex,
+            columnIndex,
+            paths: [entry],
+          };
+        } else {
+          nodes[name].totalCount += entry.count;
+          nodes[name].paths.push(entry);
+        }
+      });
+
+      cols.push({
+        nodes: objectToArray(nodes).sort(firstBy('totalCount', -1).thenBy('name')),
+      });
+    }
+
+    return cols;
+  }, [data, steps]);
+
+  const columns = useMemo(() => {
+    if (!baseColumns.length) {
       return [];
     }
 
     const selectedPaths = selectedNode?.paths ?? [];
     const activePaths = activeNode?.paths ?? [];
-    const columns = [];
-
-    for (let columnIndex = 0; columnIndex < +steps; columnIndex++) {
-      const nodes = {};
-
-      data.forEach(({ items, count }: any, nodeIndex: any) => {
-        const name = items[columnIndex];
-
-        if (name) {
-          const selected = !!selectedPaths.find(({ items }) => items[columnIndex] === name);
-          const active = selected && !!activePaths.find(({ items }) => items[columnIndex] === name);
-
-          if (!nodes[name]) {
-            const paths = data.filter(({ items }) => items[columnIndex] === name);
-
-            nodes[name] = {
-              name,
-              count,
-              totalCount: count,
-              nodeIndex,
-              columnIndex,
-              selected,
-              active,
-              paths,
-              pathMap: paths.map(({ items, count }) => ({
-                [`${columnIndex}:${items.join(':')}`]: count,
-              })),
-            };
-          } else {
-            nodes[name].totalCount += count;
-          }
+    const selectedByColumn = baseColumns.map((_, col) => {
+      const set = new Set<string>();
+      for (const p of selectedPaths) {
+        if (p.items[col]) set.add(p.items[col]);
+      }
+      return set;
+    });
+    const activeByColumn = baseColumns.map((_, col) => {
+      const set = new Set<string>();
+      for (const p of activePaths) {
+        if (p.items[col]) set.add(p.items[col]);
+      }
+      return set;
+    });
+    const edgeCountsByColumn = baseColumns.map((_, col) => {
+      const map = new Map<string, number>();
+      if (col === 0) return map;
+      for (const p of selectedPaths) {
+        const prev = p.items[col - 1];
+        const curr = p.items[col];
+        if (prev && curr) {
+          const key = `${prev}\0${curr}`;
+          map.set(key, (map.get(key) ?? 0) + p.count);
         }
-      });
+      }
+      return map;
+    });
 
-      columns.push({
-        nodes: objectToArray(nodes).sort(firstBy('totalCount', -1).thenBy('name')),
-      });
-    }
+    const result: any[] = [];
 
-    columns.forEach((column, columnIndex) => {
-      const nodes = column.nodes.map(
-        (
-          currentNode: { totalCount: number; name: string; selected: boolean },
-          currentNodeIndex: any,
-        ) => {
-          const previousNodes = columns[columnIndex - 1]?.nodes;
-          let selectedCount = previousNodes ? 0 : currentNode.totalCount;
-          let activeCount = selectedCount;
+    baseColumns.forEach((column, columnIndex) => {
+      const previousNodes = result[columnIndex - 1]?.nodes;
+      const edgeCounts = edgeCountsByColumn[columnIndex];
 
-          const lines =
-            previousNodes?.reduce((arr: any[][], previousNode: any, previousNodeIndex: number) => {
-              const fromCount = selectedNode?.paths.reduce((sum, path) => {
-                if (
-                  previousNode.name === path.items[columnIndex - 1] &&
-                  currentNode.name === path.items[columnIndex]
-                ) {
-                  sum += path.count;
-                }
-                return sum;
-              }, 0);
+      const nodes = column.nodes.map((baseNode: any, currentNodeIndex: number) => {
+        const selected = selectedByColumn[columnIndex].has(baseNode.name);
+        const active = selected && activeByColumn[columnIndex].has(baseNode.name);
+        let selectedCount = previousNodes ? 0 : baseNode.totalCount;
+        let activeCount = selectedCount;
+        const lines: number[][] = [];
 
-              if (currentNode.selected && previousNode.selected && fromCount) {
-                arr.push([previousNodeIndex, currentNodeIndex]);
-                selectedCount += fromCount;
-
-                if (previousNode.active) {
-                  activeCount += fromCount;
-                }
+        if (previousNodes && selected) {
+          previousNodes.forEach((previousNode: any, previousNodeIndex: number) => {
+            if (!previousNode.selected) return;
+            const fromCount = edgeCounts.get(`${previousNode.name}\0${baseNode.name}`) ?? 0;
+            if (fromCount) {
+              lines.push([previousNodeIndex, currentNodeIndex]);
+              selectedCount += fromCount;
+              if (previousNode.active) {
+                activeCount += fromCount;
               }
+            }
+          });
+        }
 
-              return arr;
-            }, []) || [];
-
-          return { ...currentNode, selectedCount, activeCount, lines };
-        },
-      );
+        return { ...baseNode, selected, active, selectedCount, activeCount, lines };
+      });
 
       const visitorCount = nodes.reduce(
-        (sum: number, { selected, selectedCount, active, activeCount, totalCount }) => {
+        (sum: number, { selected, selectedCount, active, activeCount, totalCount }: any) => {
           if (!selectedNode) {
             sum += totalCount;
           } else if (!activeNode && selectedNode && selected) {
@@ -140,15 +158,15 @@ export function Journey({ websiteId, steps, startStep, endStep, view }: JourneyP
         0,
       );
 
-      const previousTotal = columns[columnIndex - 1]?.visitorCount ?? 0;
+      const previousTotal = result[columnIndex - 1]?.visitorCount ?? 0;
       const dropOff =
         previousTotal > 0 ? ((visitorCount - previousTotal) / previousTotal) * 100 : 0;
 
-      Object.assign(column, { nodes, visitorCount, dropOff });
+      result.push({ nodes, visitorCount, dropOff });
     });
 
-    return columns;
-  }, [data, selectedNode, activeNode]);
+    return result;
+  }, [baseColumns, selectedNode, activeNode]);
 
   const handleClick = (name: string, columnIndex: number, paths: any[]) => {
     if (name !== selectedNode?.name || columnIndex !== selectedNode?.columnIndex) {

@@ -100,6 +100,19 @@ test('switches app and system version groupings without changing identity totals
   expect(screen.getAllByText('3')).not.toHaveLength(0);
 });
 
+test('renders chart labels and points outside the stretched plot SVG', () => {
+  const { container } = render(<OverviewScreen websiteId="website-1" />);
+  const chart = screen.getByRole('img', { name: 'Daily active identified users' });
+  const svg = container.querySelector('svg[preserveAspectRatio="none"]');
+
+  expect(chart).toBeInTheDocument();
+  expect(svg).toBeInTheDocument();
+  expect(svg?.querySelector('text')).toBeNull();
+  expect(svg?.querySelector('circle')).toBeNull();
+  expect(screen.getByTitle('Nov 18: 1')).toBeInTheDocument();
+  expect(screen.getByTitle('Nov 20: 2')).toBeInTheDocument();
+});
+
 test('applies the persisted overview layout and color scheme as presentation only', () => {
   settings.overviewLayout = 'website';
   settings.colorScheme = 'emo';

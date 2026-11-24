@@ -197,6 +197,10 @@ export async function canUpdateBoard({ user }: Auth, boardId: string) {
     return true;
   }
 
+  if (!(await hasPermission(user.role, PERMISSIONS.websiteUpdate))) {
+    return false;
+  }
+
   const board = await getBoard(boardId);
 
   if (!board) {
@@ -227,6 +231,10 @@ export async function canDeleteBoard({ user }: Auth, boardId: string) {
 
   if (user.isAdmin) {
     return true;
+  }
+
+  if (!(await hasPermission(user.role, PERMISSIONS.websiteDelete))) {
+    return false;
   }
 
   const board = await getBoard(boardId);

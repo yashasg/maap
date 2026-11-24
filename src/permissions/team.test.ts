@@ -26,7 +26,7 @@ vi.mock('@/lib/auth', async () => {
   const { ROLE_PERMISSIONS } = await import('@/lib/constants');
 
   return {
-    hasPermission: (role: string, permission: string | string[]) =>
+    hasPermission: async (role: string, permission: string | string[]) =>
       (Array.isArray(permission) ? permission : [permission]).some(p =>
         ROLE_PERMISSIONS[role]?.includes(p),
       ),

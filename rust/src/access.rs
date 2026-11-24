@@ -127,6 +127,10 @@ pub(crate) async fn entity_pool(
         return Err(unauthorized());
     };
 
+    if !global_role_allows(&user_role, access) {
+        return Err(unauthorized());
+    }
+
     if user_role == "admin" {
         return Ok(pool);
     }

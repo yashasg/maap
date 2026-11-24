@@ -232,7 +232,11 @@ test.describe('Boards', () => {
     shareId = response.body.id;
   });
 
-  test('GET /api/boards/{boardId}/shares lists the board shares', async ({ admin, viewer }) => {
+  test('GET /api/boards/{boardId}/shares lists the board shares', async ({
+    admin,
+    viewer,
+    share,
+  }) => {
     const response = await admin.get(`/api/boards/${boardId}/shares`);
     const paged = await admin.get(`/api/boards/${boardId}/shares`, {
       params: { page: 2, pageSize: 1 },
@@ -251,6 +255,12 @@ test.describe('Boards', () => {
     expect(paged.status).toBe(200);
     expect(paged.body).toMatchObject({ page: 2, pageSize: 1, count: 1, data: [] });
     expect(denied.status).toBe(401);
+
+    // Public share tokens must never enumerate other shares on the board.
+    const shared = await (await share(response.body.data[0].slug)).get(
+      `/api/boards/${boardId}/shares`,
+    );
+    expect(shared.status).toBe(401);
   });
 
   test('DELETE /api/boards/{boardId} deletes a board', async ({ admin, user, viewer }) => {

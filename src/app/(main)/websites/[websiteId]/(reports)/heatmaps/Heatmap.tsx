@@ -1050,6 +1050,7 @@ function IframeSnapshot({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onRe
         src={iframeUrl}
         title={iframeUrl}
         name="umami.disabled"
+        sandbox="allow-same-origin allow-scripts"
         tabIndex={-1}
         loading="lazy"
         scrolling="no"

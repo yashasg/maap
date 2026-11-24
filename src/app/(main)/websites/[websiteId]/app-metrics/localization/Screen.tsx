@@ -1,6 +1,7 @@
 'use client';
 
 import { Column, Grid, Heading, Text } from '@umami/react-zen';
+import { useMemo } from 'react';
 import { PieChart } from '@/components/charts/PieChart';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { Panel } from '@/components/common/Panel';
@@ -82,19 +83,31 @@ function LocalizationCard({
   metric: LocalizationMetric;
 }) {
   const query = usePropertyValuesQuery('event', websiteId, metric.propertyName);
-  const rows = normalizeValues(query.data, metric.formatValue);
+  const rows = useMemo(
+    () => normalizeValues(query.data, metric.formatValue),
+    [query.data, metric.formatValue],
+  );
   const mayHaveMoreValues = Array.isArray(query.data) && query.data.length >= 100;
-  const total = rows.reduce((sum, row) => sum + row.count, 0);
-  const chartData = {
-    labels: rows.map(row => row.label),
-    datasets: [
-      {
-        data: rows.map(row => row.count),
-        backgroundColor: CHART_COLORS,
-        borderWidth: 0,
-      },
-    ],
-  };
+  const tableRows = useMemo(() => {
+    const total = rows.reduce((sum, row) => sum + row.count, 0);
+    return rows.map(row => ({
+      ...row,
+      percent: total ? (row.count / total) * 100 : 0,
+    }));
+  }, [rows]);
+  const chartData = useMemo(
+    () => ({
+      labels: rows.map(row => row.label),
+      datasets: [
+        {
+          data: rows.map(row => row.count),
+          backgroundColor: CHART_COLORS,
+          borderWidth: 0,
+        },
+      ],
+    }),
+    [rows],
+  );
 
   return (
     <Panel title={metric.title} minHeight="390px">
@@ -113,15 +126,7 @@ function LocalizationCard({
           alignItems="center"
         >
           <PieChart type="doughnut" chartData={chartData} height="230px" />
-          <ListTable
-            title="Reported value"
-            metric="Signals"
-            itemCount={8}
-            data={rows.map(row => ({
-              ...row,
-              percent: total ? (row.count / total) * 100 : 0,
-            }))}
-          />
+          <ListTable title="Reported value" metric="Signals" itemCount={8} data={tableRows} />
           {mayHaveMoreValues && (
             <Text color="muted" style={{ gridColumn: '1 / -1' }}>
               Showing the 100 most frequently reported values.

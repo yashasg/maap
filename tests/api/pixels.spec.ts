@@ -153,7 +153,12 @@ test.describe('Pixels', () => {
     shareId = response.body.id;
   });
 
-  test('GET /api/pixels/{pixelId}/shares lists pixel shares', async ({ admin, viewer, api }) => {
+  test('GET /api/pixels/{pixelId}/shares lists pixel shares', async ({
+    admin,
+    viewer,
+    api,
+    share,
+  }) => {
     const response = await admin.get(`/api/pixels/${pixelId}/shares`);
     const paged = await admin.get(`/api/pixels/${pixelId}/shares`, {
       params: { page: 1, pageSize: 1 },
@@ -166,10 +171,14 @@ test.describe('Pixels', () => {
     expect(paged.body.pageSize).toBe(1);
     expect(denied.status).toBe(401);
 
-    // The share resolves publicly to a pixel-typed token.
+    // The share resolves publicly to a pixel-typed token, but cannot enumerate pixel shares.
     const resolved = await api.get(`/api/share/${response.body.data[0].slug}`);
+    const shared = await (await share(response.body.data[0].slug)).get(
+      `/api/pixels/${pixelId}/shares`,
+    );
 
     expect(resolved.status).toBe(200);
+    expect(shared.status).toBe(401);
     expect(resolved.body).toMatchObject({
       shareType: ENTITY_TYPE.pixel,
       pixelId,

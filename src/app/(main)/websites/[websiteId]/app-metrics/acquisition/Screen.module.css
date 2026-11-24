@@ -77,6 +77,26 @@
   margin-bottom: 12px;
 }
 
+.seriesFrame {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.seriesAxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 152px;
+  padding-top: 10px;
+  color: var(--zen-fg-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .series {
   display: flex;
   align-items: stretch;
@@ -95,11 +115,11 @@
 
 .seriesColumn {
   display: flex;
-  flex: 1 0 28px;
+  flex: 1 0 36px;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  min-width: 28px;
+  min-width: 36px;
   height: 100%;
 }
 
@@ -115,7 +135,6 @@
 .newBar,
 .activeBar {
   width: min(12px, 45%);
-  min-height: 3px;
   border-radius: 3px 3px 0 0;
 }
 
@@ -128,7 +147,8 @@
 }
 
 .seriesColumn > span {
-  width: 54px;
+  width: 100%;
+  max-width: 56px;
   margin-top: 6px;
   overflow: hidden;
   color: var(--zen-fg-muted);

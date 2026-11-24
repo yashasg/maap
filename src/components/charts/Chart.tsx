@@ -1,10 +1,27 @@
 import { Box, type BoxProps, Column } from '@umami/react-zen';
-import ChartJS, {
+import {
+  ArcElement,
+  BarController,
+  BarElement,
+  BubbleController,
+  CategoryScale,
   type ChartData,
+  Chart as ChartJS,
+  Legend as ChartLegend,
   type ChartOptions,
+  Tooltip as ChartTooltipPlugin,
+  DoughnutController,
+  Filler,
   type LegendItem,
+  LinearScale,
+  LineController,
+  LineElement,
+  PieController,
+  PointElement,
+  TimeScale,
+  TimeSeriesScale,
   type UpdateMode,
-} from 'chart.js/auto';
+} from 'chart.js';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type AnnotationMarker,
@@ -15,12 +32,34 @@ import { Legend } from '@/components/metrics/Legend';
 import { getChartBucketIndex } from '@/lib/charts';
 import { DEFAULT_ANIMATION_DURATION } from '@/lib/constants';
 
+ChartJS.register(
+  ArcElement,
+  BarController,
+  BarElement,
+  BubbleController,
+  CategoryScale,
+  DoughnutController,
+  Filler,
+  ChartLegend,
+  LinearScale,
+  LineController,
+  LineElement,
+  PieController,
+  PointElement,
+  TimeScale,
+  TimeSeriesScale,
+  ChartTooltipPlugin,
+);
+
+let cachedFontFamily: string | null = null;
+
 export interface ChartProps extends BoxProps {
   type?: 'bar' | 'bubble' | 'doughnut' | 'pie' | 'line' | 'polarArea' | 'radar' | 'scatter';
   chartData?: ChartData<any, any, unknown> & { focusLabel?: string };
   chartOptions?: ChartOptions;
   updateMode?: UpdateMode;
   animationDuration?: number;
+  ariaLabel?: string;
   onTooltip?: (model: any) => void;
   hiddenLabels?: Set<string>;
   onLegendClick?: (label: string, willBeHidden: boolean) => void;
@@ -47,6 +86,7 @@ export function Chart({
   type,
   chartData,
   animationDuration = DEFAULT_ANIMATION_DURATION,
+  ariaLabel,
   updateMode,
   onTooltip,
   chartOptions,
@@ -60,10 +100,14 @@ export function Chart({
 }: ChartProps) {
   const canvas = useRef(null);
   const chart = useRef(null);
+  const mounted = useRef(false);
+  const hadAnnotations = useRef(false);
   const [legendItems, setLegendItems] = useState([]);
   const [markers, setMarkers] = useState<AnnotationMarker[]>([]);
   const annotationsRef = useRef<ChartAnnotation[]>(annotations);
   annotationsRef.current = annotations;
+  const onTooltipRef = useRef(onTooltip);
+  onTooltipRef.current = onTooltip;
 
   // Computes pixel positions for annotation markers whenever the chart lays out (update / resize)
   const annotationPlugin = useMemo(
@@ -131,12 +175,12 @@ export function Chart({
         tooltip: {
           enabled: false,
           intersect: true,
-          external: onTooltip,
+          external: (model: any) => onTooltipRef.current?.(model),
         },
       },
       ...chartOptions,
     };
-  }, [chartOptions]);
+  }, [animationDuration, chartOptions]);
 
   const handleLegendClick = (item: LegendItem) => {
     if (onLegendClick && type === 'bar') {
@@ -169,7 +213,10 @@ export function Chart({
   // Create chart
   useEffect(() => {
     if (canvas.current) {
-      ChartJS.defaults.font.family = getComputedStyle(canvas.current).fontFamily;
+      if (!cachedFontFamily) {
+        cachedFontFamily = getComputedStyle(canvas.current).fontFamily;
+      }
+      ChartJS.defaults.font.family = cachedFontFamily;
       chart.current = new ChartJS(canvas.current, {
         type,
         data: chartData,
@@ -178,6 +225,7 @@ export function Chart({
       });
 
       setLegendItems(chart.current.legend.legendItems);
+      hadAnnotations.current = Boolean(annotationsRef.current?.length);
       const instance = chart.current;
       document.fonts?.ready.then(() => {
         if (instance.canvas) instance.update('none');
@@ -185,12 +233,18 @@ export function Chart({
     }
 
     return () => {
+      mounted.current = false;
       chart.current?.destroy();
     };
   }, []);
 
-  // Update chart
+  // Update chart (skip initial mount since new ChartJS already rendered with initial props)
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+
     if (chart.current && chartData) {
       // Replace labels and datasets *in-place*
       chart.current.data.labels = chartData.labels;
@@ -220,8 +274,13 @@ export function Chart({
     }
   }, [chartData, options, updateMode, hiddenLabels]);
 
-  // Re-run layout when annotations change so marker positions are recalculated
+  // Re-run layout only when annotations actually exist or were cleared
   useEffect(() => {
+    const hasNow = Boolean(annotations?.length);
+    if (!hasNow && !hadAnnotations.current) {
+      return;
+    }
+    hadAnnotations.current = hasNow;
     chart.current?.update('none');
   }, [annotations]);
 
@@ -229,7 +288,12 @@ export function Chart({
     <Column gap="6">
       <Box {...props}>
         <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
-          <canvas ref={canvas} style={{ position: 'absolute', top: 0, left: 0 }} />
+          <canvas
+            ref={canvas}
+            role="img"
+            aria-label={ariaLabel || `${type || 'data'} chart`}
+            style={{ position: 'absolute', top: 0, left: 0 }}
+          />
           {markers.length > 0 && (
             <ChartAnnotationMarkers
               markers={markers}

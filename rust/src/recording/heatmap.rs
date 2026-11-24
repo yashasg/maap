@@ -1009,10 +1009,12 @@ fn build_page_url(domain: &str, path: &str) -> Option<String> {
         };
         Url::parse(&format!("{protocol}://{host}")).ok()?
     };
-    origin
-        .join(if path.is_empty() { "/" } else { path })
-        .ok()
-        .map(Into::into)
+    let normalized = format!("/{}", path.replace('\\', "/").trim_start_matches('/'));
+    let resolved = origin.join(&normalized).ok()?;
+    if resolved.origin() != origin.origin() {
+        return None;
+    }
+    Some(resolved.into())
 }
 
 fn bad_request(message: impl Into<String>) -> Response {
@@ -1048,6 +1050,14 @@ mod tests {
         assert_eq!(
             build_page_url("localhost:3000", "/"),
             Some("http://localhost:3000/".to_string())
+        );
+        assert_eq!(
+            build_page_url("example.com", "//attacker.example/phish"),
+            Some("https://example.com/attacker.example/phish".to_string())
+        );
+        assert_eq!(
+            build_page_url("example.com", "/\\attacker.example/phish"),
+            Some("https://example.com/attacker.example/phish".to_string())
         );
     }
 

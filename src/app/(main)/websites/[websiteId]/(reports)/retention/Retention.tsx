@@ -1,6 +1,6 @@
 import { Column, Grid, Icon, Row, Text } from '@umami/react-zen';
 import { differenceInCalendarDays } from 'date-fns';
-import type { ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { Panel } from '@/components/common/Panel';
 import { useLocale, useMessages, useRetentionQuery } from '@/components/hooks';
@@ -26,54 +26,63 @@ export function Retention({ websiteId, days = DAYS, startDate, endDate }: Retent
     endDate,
   });
 
-  const rows =
-    data?.reduce((arr: any[], row: { date: any; visitors: any; day: any }) => {
-      const { date, visitors, day } = row;
-      if (day === 0) {
-        return arr.concat({
-          date,
-          visitors,
-          records: days
-            .reduce((arr, day) => {
-              arr[day] = data.find(
-                (x: { date: any; day: number }) => x.date === date && x.day === day,
-              );
-              return arr;
-            }, [])
-            .filter(n => n),
-        });
+  const { rows, maxPercentage } = useMemo(() => {
+    if (!data?.length) {
+      return { rows: [], maxPercentage: 0 };
+    }
+
+    const byDate = new Map<string, Map<number, any>>();
+    const cohorts: Array<{ date: string; visitors: number }> = [];
+
+    for (const row of data as Array<{
+      date: string;
+      visitors: number;
+      day: number;
+      percentage?: number;
+    }>) {
+      if (row.day === 0) {
+        cohorts.push({ date: row.date, visitors: row.visitors });
       }
-      return arr;
-    }, []) || [];
+      let bucket = byDate.get(row.date);
+      if (!bucket) {
+        bucket = new Map();
+        byDate.set(row.date, bucket);
+      }
+      bucket.set(row.day, row);
+    }
 
-  // No fixed scale fits every website, so shade relative to the best visible cell.
-  const maxPercentage = Math.max(
-    0,
-    ...rows.flatMap(({ date, records }) => {
-      const maxDay = differenceInCalendarDays(endDate, parseBackendDate(date));
+    let max = 0;
+    const computedRows = cohorts.map(({ date, visitors }) => {
+      const parsedDate = parseBackendDate(date);
+      const maxDay = differenceInCalendarDays(endDate, parsedDate);
+      const bucket = byDate.get(date);
+      const percentages = new Map<number, number>();
 
-      return records
-        .filter(({ day }) => day <= maxDay)
-        .map(({ percentage }) => Number(percentage) || 0);
-    }),
-  );
+      for (const day of days) {
+        const percentage = bucket?.get(day)?.percentage;
+        if (percentage != null) {
+          percentages.set(day, Number(percentage));
+          if (day <= maxDay && Number(percentage) > max) {
+            max = Number(percentage);
+          }
+        }
+      }
+
+      return { date, parsedDate, maxDay, visitors, percentages };
+    });
+
+    return { rows: computedRows, maxPercentage: max };
+  }, [data, days, endDate]);
 
   return (
     <LoadingPanel data={data} isLoading={isLoading} error={error}>
       {data && (
-        <Panel allowFullscreen height="900px">
-          <Column
-            paddingY="6"
-            paddingX={{ base: '3', md: '6' }}
-            position="absolute"
-            top="40px"
-            left="0"
-            right="0"
-            bottom="0"
-          >
-            <Column gap="1" overflow="auto">
+        <Panel allowFullscreen minHeight="320px" maxHeight="900px">
+          <Column paddingY="6" paddingX={{ base: '3', md: '6' }} gap="1" overflow="auto">
+            <Column gap="1" role="table" aria-label={t(labels.cohort)}>
               <Grid
-                columns="120px repeat(10, 100px)"
+                role="row"
+                columns={`120px repeat(${days.length}, 100px)`}
                 alignItems="center"
                 gap="1"
                 height="50px"
@@ -81,60 +90,55 @@ export function Retention({ websiteId, days = DAYS, startDate, endDate }: Retent
                 minWidth="100%"
                 autoFlow="column"
               >
-                <Column>
+                <Column role="columnheader">
                   <Text weight="bold" align="center">
                     {t(labels.cohort)}
                   </Text>
                 </Column>
                 {days.map(n => (
-                  <Column key={n}>
+                  <Column key={n} role="columnheader">
                     <Text weight="bold" align="center" wrap="nowrap">
                       {t(labels.day)} {n}
                     </Text>
                   </Column>
                 ))}
               </Grid>
-              {rows.map(({ date, visitors, records }: any, rowIndex: number) => {
-                const parsedDate = parseBackendDate(date);
-                const maxDay = differenceInCalendarDays(endDate, parsedDate);
-                return (
-                  <Grid
-                    key={rowIndex}
-                    columns="120px repeat(10, 100px)"
-                    gap="1"
-                    autoFlow="column"
-                    width="max-content"
-                    minWidth="100%"
-                  >
-                    <Column justifyContent="center" gap="1">
-                      <Text weight="bold">{formatDate(parsedDate, 'PP', locale)}</Text>
-                      <Row alignItems="center" gap>
-                        <Icon>
-                          <Users />
-                        </Icon>
-                        <Text>{formatLongNumber(visitors)}</Text>
-                      </Row>
-                    </Column>
-                    {days.map(day => {
-                      if (day > maxDay) return null;
-                      const percentage = records.find(a => a.day === day)?.percentage;
-                      return (
-                        <Cell
-                          key={day}
-                          // Square root keeps later days visible next to Day 1.
-                          intensity={
-                            percentage && maxPercentage
-                              ? Math.sqrt(Number(percentage) / maxPercentage)
-                              : 0
-                          }
-                        >
-                          {percentage ? `${Number(percentage).toFixed(2)}%` : ''}
-                        </Cell>
-                      );
-                    })}
-                  </Grid>
-                );
-              })}
+              {rows.map(({ date, parsedDate, maxDay, visitors, percentages }) => (
+                <Grid
+                  key={date}
+                  role="row"
+                  columns={`120px repeat(${days.length}, 100px)`}
+                  gap="1"
+                  autoFlow="column"
+                  width="max-content"
+                  minWidth="100%"
+                >
+                  <Column role="rowheader" justifyContent="center" gap="1">
+                    <Text weight="bold">{formatDate(parsedDate, 'PP', locale)}</Text>
+                    <Row alignItems="center" gap>
+                      <Icon>
+                        <Users />
+                      </Icon>
+                      <Text>{formatLongNumber(visitors)}</Text>
+                    </Row>
+                  </Column>
+                  {days.map(day => {
+                    if (day > maxDay) return null;
+                    const percentage = percentages.get(day);
+                    return (
+                      <Cell
+                        key={day}
+                        // Square root keeps later days visible next to Day 1.
+                        intensity={
+                          percentage && maxPercentage ? Math.sqrt(percentage / maxPercentage) : 0
+                        }
+                      >
+                        {percentage ? `${percentage.toFixed(2)}%` : ''}
+                      </Cell>
+                    );
+                  })}
+                </Grid>
+              ))}
             </Column>
           </Column>
         </Panel>
@@ -153,6 +157,7 @@ const Cell = ({ intensity = 0, children }: { intensity?: number; children: React
 
   return (
     <Column
+      role="cell"
       justifyContent="center"
       alignItems="center"
       width="100px"

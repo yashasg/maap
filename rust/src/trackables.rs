@@ -273,10 +273,14 @@ async fn user_allows(
     if user.role == "admin" {
         return Ok(true);
     }
+    if !matches!(access, Access::Read) && user.role != "user" {
+        return Ok(false);
+    }
     let query = format!(
         r#"SELECT e.user_id, tu.role AS team_role
             FROM {} e
-            LEFT JOIN team_user tu ON tu.team_id = e.team_id AND tu.user_id = $2
+            LEFT JOIN team t ON t.team_id = e.team_id AND t.deleted_at IS NULL
+            LEFT JOIN team_user tu ON tu.team_id = t.team_id AND tu.user_id = $2
             WHERE e.{} = $1"#,
         kind.table(),
         kind.id_column()
@@ -321,7 +325,10 @@ async fn can_create(
         return Ok(true);
     };
     let role = sqlx::query_scalar::<_, String>(
-        "SELECT role FROM team_user WHERE team_id = $1 AND user_id = $2",
+        r#"SELECT tu.role
+           FROM team_user tu
+           JOIN team t ON t.team_id = tu.team_id AND t.deleted_at IS NULL
+           WHERE tu.team_id = $1 AND tu.user_id = $2"#,
     )
     .bind(team_id)
     .bind(user.id)
@@ -1106,11 +1113,11 @@ async fn list_shares(
         Ok(pool) => pool,
         Err(response) => return response,
     };
-    let auth = match read_auth(pool, &headers, kind.api_path()).await {
-        Ok(auth) => auth,
+    let user = match bearer(pool, &headers, kind.api_path()).await {
+        Ok(user) => user,
         Err(response) => return response,
     };
-    match read_allows(pool, &auth, kind, entity_id).await {
+    match user_allows(pool, &user, kind, entity_id, Access::Read).await {
         Ok(true) => {}
         Ok(false) => return error_response(StatusCode::UNAUTHORIZED, "Unauthorized"),
         Err(error) => {

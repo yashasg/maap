@@ -237,12 +237,6 @@ async fn report_pool(
         }
     };
 
-    if let Some((user_id, role)) = check_bearer_auth(&raw_pool, headers, "/api/websites").await {
-        if role == "admin" || user_id == report.user_id {
-            return Ok((raw_pool, report));
-        }
-    }
-
     let pool = if access == Access::Read {
         website_section_pool(
             state,
@@ -325,11 +319,6 @@ async fn compat_report_pool(
             ))
         }
     };
-    if let Some((user_id, role)) = check_bearer_auth(&raw_pool, headers, "/api/reports").await {
-        if role == "admin" || user_id == report.user_id {
-            return Ok((raw_pool, report));
-        }
-    }
     let pool = if access == Access::Read {
         match report_section(&report.kind) {
             Some(section) => {

@@ -21,7 +21,7 @@ vi.mock('@/lib/auth', async () => {
   const { ROLE_PERMISSIONS } = await import('@/lib/constants');
 
   return {
-    hasPermission: (role: string, permission: string | string[]) =>
+    hasPermission: async (role: string, permission: string | string[]) =>
       (Array.isArray(permission) ? permission : [permission]).some(p =>
         ROLE_PERMISSIONS[role]?.includes(p),
       ),
@@ -30,6 +30,7 @@ vi.mock('@/lib/auth', async () => {
 
 const adminUser = { id: 'admin-1', username: 'admin', role: 'admin', isAdmin: true };
 const normalUser = { id: 'user-1', username: 'user', role: 'user', isAdmin: false };
+const viewOnlyUser = { id: 'user-2', username: 'viewer', role: 'view-only', isAdmin: false };
 
 beforeEach(() => {
   vi.mocked(getEntity).mockReset();
@@ -143,5 +144,12 @@ describe('canDeleteEntity', () => {
     vi.mocked(getEntity).mockResolvedValue({ teamId: 'team-1' } as any);
     vi.mocked(getTeamUser).mockResolvedValue({ role: 'team-view-only' } as any);
     await expect(canDeleteEntity({ user: normalUser }, 'entity-1')).resolves.toBe(false);
+  });
+
+  test('denies a globally view-only user even as team member', async () => {
+    vi.mocked(getEntity).mockResolvedValue({ teamId: 'team-1' } as any);
+    vi.mocked(getTeamUser).mockResolvedValue({ role: 'team-member' } as any);
+    await expect(canUpdateEntity({ user: viewOnlyUser }, 'entity-1')).resolves.toBe(false);
+    await expect(canDeleteEntity({ user: viewOnlyUser }, 'entity-1')).resolves.toBe(false);
   });
 });

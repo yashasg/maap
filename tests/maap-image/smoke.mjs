@@ -166,6 +166,12 @@ assert.equal(reply?.result?.structuredContent?.current?.pageviews, 3);
 for (const appRoute of ['/login', '/websites', `/websites/${appID}`]) {
   const page = await request(appRoute);
   assert.equal(page.headers.get('x-maap-server'), 'rust', `${appRoute} served by Rust`);
+  assert.match(
+    page.headers.get('content-security-policy') || '',
+    /frame-ancestors 'self'/,
+    `${appRoute} sets CSP frame-ancestors`,
+  );
+  assert.equal(page.headers.get('x-content-type-options'), 'nosniff');
   const html = await page.text();
   assert.match(html, /Maap/);
   const chunkMatch = html.match(/\/_next\/static\/[^"'\s>]+\.js/);
