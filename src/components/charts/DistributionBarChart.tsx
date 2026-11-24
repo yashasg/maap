@@ -36,8 +36,6 @@ export interface DistributionBarChartProps {
   horizontal?: boolean;
 }
 
-const MemoChart = memo(Chart);
-
 function DistributionBarChartComponent({
   data,
   labels,
@@ -166,7 +164,7 @@ function DistributionBarChartComponent({
 
   return (
     <>
-      <MemoChart
+      <Chart
         type="bar"
         chartData={chartData}
         chartOptions={chartOptions}

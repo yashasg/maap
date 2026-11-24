@@ -1,5 +1,5 @@
 import { Row, StatusLight, Text } from '@umami/react-zen';
-import type { LegendItem } from 'chart.js';
+import type { LegendItem } from 'chart.js/auto';
 import { colord } from 'colord';
 
 export function Legend({

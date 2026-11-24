@@ -84,35 +84,50 @@ export function Journey({ websiteId, steps, startStep, endStep, view }: JourneyP
       return [];
     }
 
-    const selectedPaths = selectedNode?.paths ?? [];
+    if (!selectedNode) {
+      let previousTotal = 0;
+      return baseColumns.map((column, columnIndex) => {
+        const nodes = column.nodes.map((baseNode: any) => ({
+          ...baseNode,
+          selected: false,
+          active: false,
+          selectedCount: columnIndex ? 0 : baseNode.totalCount,
+          activeCount: columnIndex ? 0 : baseNode.totalCount,
+          lines: [],
+        }));
+        const visitorCount = nodes.reduce(
+          (sum: number, { totalCount }: any) => sum + totalCount,
+          0,
+        );
+        const dropOff =
+          previousTotal > 0 ? ((visitorCount - previousTotal) / previousTotal) * 100 : 0;
+        previousTotal = visitorCount;
+        return { nodes, visitorCount, dropOff };
+      });
+    }
+
+    const selectedPaths = selectedNode.paths ?? [];
     const activePaths = activeNode?.paths ?? [];
-    const selectedByColumn = baseColumns.map((_, col) => {
-      const set = new Set<string>();
-      for (const p of selectedPaths) {
-        if (p.items[col]) set.add(p.items[col]);
-      }
-      return set;
-    });
-    const activeByColumn = baseColumns.map((_, col) => {
-      const set = new Set<string>();
-      for (const p of activePaths) {
-        if (p.items[col]) set.add(p.items[col]);
-      }
-      return set;
-    });
-    const edgeCountsByColumn = baseColumns.map((_, col) => {
-      const map = new Map<string, number>();
-      if (col === 0) return map;
-      for (const p of selectedPaths) {
-        const prev = p.items[col - 1];
+    const selectedByColumn = baseColumns.map(() => new Set<string>());
+    const activeByColumn = baseColumns.map(() => new Set<string>());
+    const edgeCountsByColumn = baseColumns.map(() => new Map<string, number>());
+
+    for (const p of selectedPaths) {
+      for (let col = 0; col < baseColumns.length; col++) {
         const curr = p.items[col];
-        if (prev && curr) {
-          const key = `${prev}\0${curr}`;
-          map.set(key, (map.get(key) ?? 0) + p.count);
+        if (!curr) continue;
+        selectedByColumn[col].add(curr);
+        if (col > 0 && p.items[col - 1]) {
+          const key = `${p.items[col - 1]}\0${curr}`;
+          edgeCountsByColumn[col].set(key, (edgeCountsByColumn[col].get(key) ?? 0) + p.count);
         }
       }
-      return map;
-    });
+    }
+    for (const p of activePaths) {
+      for (let col = 0; col < baseColumns.length; col++) {
+        if (p.items[col]) activeByColumn[col].add(p.items[col]);
+      }
+    }
 
     const result: any[] = [];
 

@@ -2,8 +2,6 @@ import { memo, useCallback, useState } from 'react';
 import { Chart, type ChartProps } from '@/components/charts/Chart';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 
-const MemoChart = memo(Chart);
-
 export interface PieChartProps extends ChartProps {
   type?: 'doughnut' | 'pie';
 }
@@ -25,7 +23,7 @@ function PieChartComponent({ type = 'pie', height = '300px', ...props }: PieChar
 
   return (
     <>
-      <MemoChart {...props} type={type} height={height} onTooltip={handleTooltip} />
+      <Chart {...props} type={type} height={height} onTooltip={handleTooltip} />
       {tooltip && <ChartTooltip {...tooltip} />}
     </>
   );

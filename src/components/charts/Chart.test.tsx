@@ -9,9 +9,8 @@ const chartSpies = vi.hoisted(() => ({
   destroy: vi.fn(),
 }));
 
-vi.mock('chart.js', () => {
+vi.mock('chart.js/auto', () => {
   class MockChart {
-    static register = vi.fn();
     static defaults = { font: { family: '' } };
     canvas: HTMLCanvasElement;
     data: any;
@@ -27,25 +26,7 @@ vi.mock('chart.js', () => {
     destroy = chartSpies.destroy;
   }
 
-  return {
-    Chart: MockChart,
-    ArcElement: {},
-    BarController: {},
-    BarElement: {},
-    BubbleController: {},
-    CategoryScale: {},
-    DoughnutController: {},
-    Filler: {},
-    Legend: {},
-    LinearScale: {},
-    LineController: {},
-    LineElement: {},
-    PieController: {},
-    PointElement: {},
-    TimeScale: {},
-    TimeSeriesScale: {},
-    Tooltip: {},
-  };
+  return { default: MockChart };
 });
 
 beforeEach(() => {
@@ -56,15 +37,13 @@ beforeEach(() => {
 
 test('avoids redundant chart.update calls on initial mount and updates when animationDuration changes', () => {
   const data = { labels: ['A'], datasets: [{ label: 'Views', data: [1] }] };
-  const { rerender } = render(
-    <Chart type="bar" chartData={data} animationDuration={300} ariaLabel="Pageviews chart" />,
-  );
+  const { rerender } = render(<Chart type="bar" chartData={data} animationDuration={300} />);
 
-  expect(screen.getByRole('img', { name: 'Pageviews chart' })).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: 'bar chart' })).toBeInTheDocument();
   expect(chartSpies.construct).toHaveBeenCalledTimes(1);
   expect(chartSpies.update).not.toHaveBeenCalled();
 
-  rerender(<Chart type="bar" chartData={data} animationDuration={0} ariaLabel="Pageviews chart" />);
+  rerender(<Chart type="bar" chartData={data} animationDuration={0} />);
 
   expect(chartSpies.update).toHaveBeenCalledTimes(1);
 });

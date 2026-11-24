@@ -2,8 +2,6 @@ import { memo, useCallback, useState } from 'react';
 import { Chart, type ChartProps } from '@/components/charts/Chart';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 
-const MemoChart = memo(Chart);
-
 export interface BubbleChartProps extends ChartProps {
   type?: 'bubble';
 }
@@ -25,7 +23,7 @@ function BubbleChartComponent({ type = 'bubble', ...props }: BubbleChartProps) {
 
   return (
     <>
-      <MemoChart {...props} type={type} onTooltip={handleTooltip} />
+      <Chart {...props} type={type} onTooltip={handleTooltip} />
       {tooltip && <ChartTooltip {...tooltip} />}
     </>
   );

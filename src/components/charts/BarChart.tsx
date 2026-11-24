@@ -8,8 +8,6 @@ import { getThemeColors } from '@/lib/colors';
 import { DATE_FORMATS, DATE_FUNCTIONS, formatDate, parseBackendDate } from '@/lib/date';
 import { formatLongCurrency, formatLongNumber } from '@/lib/format';
 
-const MemoChart = memo(Chart);
-
 const dateFormats = {
   millisecond: 'T',
   second: 'pp',
@@ -177,7 +175,7 @@ function BarChartComponent({
 
   return (
     <>
-      <MemoChart
+      <Chart
         {...props}
         type="bar"
         chartData={chartData}

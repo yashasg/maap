@@ -786,12 +786,6 @@ async fn fallback_proxy(State(state): State<AppState>, req: Request) -> Response
     }
 }
 
-fn url_origin(raw: &str) -> Option<String> {
-    let parsed = Url::parse(raw).ok()?;
-    let origin = parsed.origin();
-    origin.is_tuple().then(|| origin.ascii_serialization())
-}
-
 fn build_csp() -> String {
     let live = if env::var("NODE_ENV").ok().as_deref() == Some("development") {
         " http://localhost:8400"
@@ -799,7 +793,13 @@ fn build_csp() -> String {
         ""
     };
     let mut connect_src = vec!["'self'".to_string(), "https:".to_string()];
-    if let Some(origin) = env::var("API_URL").ok().and_then(|v| url_origin(&v)) {
+    if let Some(origin) = env::var("API_URL")
+        .ok()
+        .and_then(|v| Url::parse(&v).ok())
+        .map(|u| u.origin())
+        .filter(|o| o.is_tuple())
+        .map(|o| o.ascii_serialization())
+    {
         connect_src.push(origin);
     }
     let mut frame_ancestors = vec!["'self'".to_string()];

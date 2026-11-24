@@ -1,28 +1,11 @@
 import { Box, type BoxProps, Column } from '@umami/react-zen';
-import {
-  ArcElement,
-  BarController,
-  BarElement,
-  BubbleController,
-  CategoryScale,
+import ChartJS, {
   type ChartData,
-  Chart as ChartJS,
-  Legend as ChartLegend,
   type ChartOptions,
-  Tooltip as ChartTooltipPlugin,
-  DoughnutController,
-  Filler,
   type LegendItem,
-  LinearScale,
-  LineController,
-  LineElement,
-  PieController,
-  PointElement,
-  TimeScale,
-  TimeSeriesScale,
   type UpdateMode,
-} from 'chart.js';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+} from 'chart.js/auto';
+import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type AnnotationMarker,
   type ChartAnnotation,
@@ -32,25 +15,6 @@ import { Legend } from '@/components/metrics/Legend';
 import { getChartBucketIndex } from '@/lib/charts';
 import { DEFAULT_ANIMATION_DURATION } from '@/lib/constants';
 
-ChartJS.register(
-  ArcElement,
-  BarController,
-  BarElement,
-  BubbleController,
-  CategoryScale,
-  DoughnutController,
-  Filler,
-  ChartLegend,
-  LinearScale,
-  LineController,
-  LineElement,
-  PieController,
-  PointElement,
-  TimeScale,
-  TimeSeriesScale,
-  ChartTooltipPlugin,
-);
-
 let cachedFontFamily: string | null = null;
 
 export interface ChartProps extends BoxProps {
@@ -59,7 +23,6 @@ export interface ChartProps extends BoxProps {
   chartOptions?: ChartOptions;
   updateMode?: UpdateMode;
   animationDuration?: number;
-  ariaLabel?: string;
   onTooltip?: (model: any) => void;
   hiddenLabels?: Set<string>;
   onLegendClick?: (label: string, willBeHidden: boolean) => void;
@@ -82,11 +45,10 @@ function isSameMarkers(a: AnnotationMarker[], b: AnnotationMarker[]) {
   );
 }
 
-export function Chart({
+function ChartComponent({
   type,
   chartData,
   animationDuration = DEFAULT_ANIMATION_DURATION,
-  ariaLabel,
   updateMode,
   onTooltip,
   chartOptions,
@@ -100,8 +62,12 @@ export function Chart({
 }: ChartProps) {
   const canvas = useRef(null);
   const chart = useRef(null);
-  const mounted = useRef(false);
-  const hadAnnotations = useRef(false);
+  const prevInputs = useRef<{
+    chartData: any;
+    options: any;
+    hiddenLabels: any;
+    annotations: any;
+  } | null>(null);
   const [legendItems, setLegendItems] = useState([]);
   const [markers, setMarkers] = useState<AnnotationMarker[]>([]);
   const annotationsRef = useRef<ChartAnnotation[]>(annotations);
@@ -225,7 +191,6 @@ export function Chart({
       });
 
       setLegendItems(chart.current.legend.legendItems);
-      hadAnnotations.current = Boolean(annotationsRef.current?.length);
       const instance = chart.current;
       document.fonts?.ready.then(() => {
         if (instance.canvas) instance.update('none');
@@ -233,19 +198,29 @@ export function Chart({
     }
 
     return () => {
-      mounted.current = false;
+      prevInputs.current = null;
       chart.current?.destroy();
     };
   }, []);
 
   // Update chart (skip initial mount since new ChartJS already rendered with initial props)
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
+    const prev = prevInputs.current;
+    prevInputs.current = { chartData, options, hiddenLabels, annotations };
+    if (!prev || !chart.current) return;
+
+    const dataChanged =
+      prev.chartData !== chartData ||
+      prev.options !== options ||
+      prev.hiddenLabels !== hiddenLabels;
+    if (!dataChanged) {
+      if (prev.annotations?.length || annotations?.length) {
+        chart.current.update('none');
+      }
       return;
     }
 
-    if (chart.current && chartData) {
+    if (chartData) {
       // Replace labels and datasets *in-place*
       chart.current.data.labels = chartData.labels;
       chart.current.data.datasets = chartData.datasets;
@@ -272,17 +247,7 @@ export function Chart({
 
       setLegendItems(chart.current.legend.legendItems);
     }
-  }, [chartData, options, updateMode, hiddenLabels]);
-
-  // Re-run layout only when annotations actually exist or were cleared
-  useEffect(() => {
-    const hasNow = Boolean(annotations?.length);
-    if (!hasNow && !hadAnnotations.current) {
-      return;
-    }
-    hadAnnotations.current = hasNow;
-    chart.current?.update('none');
-  }, [annotations]);
+  }, [chartData, options, updateMode, hiddenLabels, annotations]);
 
   return (
     <Column gap="6">
@@ -291,7 +256,7 @@ export function Chart({
           <canvas
             ref={canvas}
             role="img"
-            aria-label={ariaLabel || `${type || 'data'} chart`}
+            aria-label={`${type || 'data'} chart`}
             style={{ position: 'absolute', top: 0, left: 0 }}
           />
           {markers.length > 0 && (
@@ -323,3 +288,7 @@ export function Chart({
     </Column>
   );
 }
+
+export const Chart = memo(ChartComponent);
+
+Chart.displayName = 'Chart';

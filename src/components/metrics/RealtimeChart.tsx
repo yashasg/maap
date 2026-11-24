@@ -1,4 +1,4 @@
-import { isBefore, startOfMinute, subMinutes } from 'date-fns';
+import { isBefore, subMinutes } from 'date-fns';
 import { useMemo, useRef } from 'react';
 import { useTimezone } from '@/components/hooks';
 import { DEFAULT_ANIMATION_DURATION, REALTIME_RANGE } from '@/lib/constants';
@@ -15,7 +15,7 @@ export function RealtimeChart({ data, unit, ...props }: RealtimeChartProps) {
   const { formatSeriesTimezone, fromUtc, timezone } = useTimezone();
   const minuteBucket = Math.floor(Date.now() / 60_000);
   const { endDate, minDate, maxDate } = useMemo(() => {
-    const end = startOfMinute(new Date(minuteBucket * 60_000));
+    const end = new Date(minuteBucket * 60_000);
     const start = subMinutes(end, REALTIME_RANGE);
     return {
       endDate: end,

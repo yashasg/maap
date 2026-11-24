@@ -266,11 +266,15 @@ function SeriesCard({
   subtitle,
   points,
   values,
+  formatLabel = formatBucket,
+  showLegend = true,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   points: AcquisitionSeriesPoint[];
   values: ('activeUsers' | 'newUsers')[];
+  formatLabel?: (bucket: string) => string;
+  showLegend?: boolean;
 }) {
   const max = Math.max(0, ...points.flatMap(point => values.map(value => point[value])));
   const yMax = Math.max(1, max);
@@ -298,14 +302,18 @@ function SeriesCard({
                         style={{
                           height: count > 0 ? `${Math.max(3, (count / yMax) * 100)}%` : '0%',
                         }}
-                        title={`${formatBucket(point.bucket)} · ${
-                          value === 'newUsers' ? 'New' : 'Active'
-                        }: ${number.format(count)}`}
+                        title={
+                          showLegend
+                            ? `${formatLabel(point.bucket)} · ${
+                                value === 'newUsers' ? 'New' : 'Active'
+                              }: ${number.format(count)}`
+                            : `${formatLabel(point.bucket)}: ${number.format(count)}`
+                        }
                       />
                     );
                   })}
                 </div>
-                <span>{formatBucket(point.bucket)}</span>
+                <span>{formatLabel(point.bucket)}</span>
               </div>
             ))}
           </div>
@@ -313,7 +321,7 @@ function SeriesCard({
       ) : (
         <CardEmpty />
       )}
-      <Legend values={values} />
+      {showLegend && <Legend values={values} />}
     </ChartCard>
   );
 }
@@ -329,45 +337,23 @@ function CountSeriesCard({
   points: AcquisitionCountPoint[];
   labels?: (bucket: string) => string;
 }) {
-  const sorted = useMemo(
-    () => [...points].sort((a, b) => Number(a.bucket) - Number(b.bucket)),
+  const mapped = useMemo(
+    () =>
+      [...points]
+        .sort((a, b) => Number(a.bucket) - Number(b.bucket))
+        .map(point => ({ bucket: point.bucket, newUsers: point.users, activeUsers: 0 })),
     [points],
   );
-  const max = Math.max(0, ...sorted.map(point => point.users));
-  const yMax = Math.max(1, max);
-  const yTicks = max > 1 ? [max, Math.round(max / 2), 0] : [yMax, 0];
 
   return (
-    <ChartCard title={title} subtitle={subtitle}>
-      {sorted.length ? (
-        <div className={styles.seriesFrame} role="img" aria-label={`${title} chart`}>
-          <div className={styles.seriesAxis} aria-hidden="true">
-            {yTicks.map(tick => (
-              <span key={tick}>{number.format(tick)}</span>
-            ))}
-          </div>
-          <div className={styles.series}>
-            {sorted.map(point => (
-              <div className={styles.seriesColumn} key={point.bucket}>
-                <div className={styles.barGroup}>
-                  <div
-                    className={styles.newBar}
-                    style={{
-                      height:
-                        point.users > 0 ? `${Math.max(3, (point.users / yMax) * 100)}%` : '0%',
-                    }}
-                    title={`${labels(point.bucket)}: ${number.format(point.users)}`}
-                  />
-                </div>
-                <span>{labels(point.bucket)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <CardEmpty />
-      )}
-    </ChartCard>
+    <SeriesCard
+      title={title}
+      subtitle={subtitle}
+      points={mapped}
+      values={['newUsers']}
+      formatLabel={labels}
+      showLegend={false}
+    />
   );
 }
 
